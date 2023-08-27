@@ -16,7 +16,7 @@ To execute a command at the command line, add the following to your build file:
 public void startServer() throws Exception {
     new ExecOperation()
             .fromProject(this)
-            .command("./start.sh")
+            .command("./start.sh", "--port", "8080")
             .execute();
 }
 ```
@@ -71,8 +71,3 @@ public void startServer() throws Exception {
             .execute();
 }
 ```
-
-
-
-
-
