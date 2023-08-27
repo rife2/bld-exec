@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -75,6 +76,10 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
             pb.command(args_);
             pb.directory(workDir);
 
+            if (LOGGER.isLoggable(Level.INFO)) {
+                LOGGER.info(String.join(" ", args_));
+            }
+
             var proc = pb.start();
             var err = proc.waitFor(30, TimeUnit.SECONDS);
             var stdout = readStream(proc.getInputStream());
@@ -97,6 +102,12 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
                     errorMessage.append("STDERR -> ").append(stderr.get(0));
                 } else if ((all || output || fail_.contains(ExecFail.STDOUT)) && !stdout.isEmpty()) {
                     errorMessage.append("STDOUT -> ").append(stdout.get(0));
+                }
+            }
+
+            if (LOGGER.isLoggable(Level.INFO) && errorMessage.isEmpty() && !stdout.isEmpty()) {
+                for (var l : stdout) {
+                    LOGGER.info(l);
                 }
             }
         } else {
