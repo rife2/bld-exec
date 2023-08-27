@@ -55,6 +55,16 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     }
 
     /**
+     * Configures the command and arguments to be executed.
+     *
+     * @see #command(String...)
+     */
+    public ExecOperation command(List<String> args) {
+        args_.addAll(args);
+        return this;
+    }
+
+    /**
      * Executes the command.
      */
     @Override

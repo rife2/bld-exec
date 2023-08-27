@@ -7,8 +7,14 @@
   <component name="PDMPlugin">
     <option name="customRuleSets">
       <list>
-        <option value="K:\java\semver\config\pmd.xml" />
+        <option value="$PROJECT_DIR$/config/pmd.xml" />
       </list>
+    </option>
+    <option name="options">
+      <map>
+        <entry key="Statistics URL" value="" />
+        <entry key="Target JDK" value="17" />
+      </map>
     </option>
     <option name="skipTestSources" value="false" />
   </component>

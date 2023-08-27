@@ -29,9 +29,15 @@ constitute a failure.
 ```java
 @BuildCommand
 public void startServer() throws Exception {
+    final List<String> cmds;
+    if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+        cmds = List.of("cmd", "/c", "stop.bat");
+    } else {
+        cmds = List.of("./stop.sh");
+    }
     new ExecOperation()
             .fromProject(this)
-            .command("cmd", "/c", "stop.bat")
+            .command(cmds)
             .fail(ExecFail.STDERR)
             .execute();
 }
@@ -61,7 +67,7 @@ public void startServer() throws Exception {
     new ExecOperation()
             .fromProject(this)
             .command("touch", "foo.txt")
-            .workDir("/tmp")
+            .workDir(System.getProperty("java.io.tmpdir"))
             .execute();
 }
 ```

@@ -19,7 +19,6 @@
         </properties>
     </rule>
 
-
     <!-- CODE STYLE -->
     <rule ref="category/java/codestyle.xml">
         <exclude name="AtLeastOneConstructor"/>

@@ -23,6 +23,7 @@ import rife.bld.WebProject;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -30,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 
 class ExecOperationTest {
     private static final String FOO = "foo";
+    private static final String HELLO = "Hello";
 
     @Test
     void testAll() {
@@ -53,6 +55,16 @@ class ExecOperationTest {
                 .execute();
 
         assertThat(tmpFile).exists();
+    }
+
+    @Test
+    void testCommandList() {
+        assertThatCode(() ->
+                new ExecOperation()
+                        .fromProject(new BaseProject())
+                        .command(List.of("logger", "-s", HELLO))
+                        .fail(ExecFail.STDERR)
+                        .execute()).message().startsWith("STDERR -> ").endsWith(HELLO);
     }
 
     @Test
@@ -100,9 +112,9 @@ class ExecOperationTest {
         assertThatCode(() ->
                 new ExecOperation()
                         .fromProject(new BaseProject())
-                        .command("logger", "-s", "Hello")
+                        .command("logger", "-s", HELLO)
                         .fail(ExecFail.STDERR)
-                        .execute()).message().startsWith("STDERR -> ").endsWith("Hello");
+                        .execute()).message().startsWith("STDERR -> ").endsWith(HELLO);
     }
 
     @Test
@@ -110,7 +122,7 @@ class ExecOperationTest {
         assertThatCode(() ->
                 new ExecOperation()
                         .fromProject(new BaseProject())
-                        .command("echo", "Hello")
+                        .command("echo", HELLO)
                         .fail(ExecFail.STDOUT)
                         .execute()).message().isEqualTo("STDOUT -> Hello");
     }
