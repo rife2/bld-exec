@@ -48,6 +48,8 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * <li>{@code command("cmd", "/c", "stop.bat")}</li>
      * <li>{@code command("./stop.sh"}</li>
      * </ul></p>
+     * 
+     * @see #command(Collection) 
      */
     public ExecOperation command(String... arg) {
         args_.addAll(List.of(arg));
@@ -59,7 +61,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      *
      * @see #command(String...)
      */
-    public ExecOperation command(List<String> args) {
+    public ExecOperation command(Collection<String> args) {
         args_.addAll(args);
         return this;
     }
