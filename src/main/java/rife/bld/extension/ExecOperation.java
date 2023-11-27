@@ -138,6 +138,17 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
 
     /**
      * Configure the failure mode.
+     * <p>
+     * The failure modes are:
+     * <ul>
+     *     <li>{@link ExecFail#EXIT}<p>Exit value > 0</p></li>
+     *     <li>{@link ExecFail#NORMAL}<p>Exit value > 0 or any data to the standard error stream (stderr)</p></li>
+     *     <li>{@link ExecFail#OUTPUT}<p>Any data to the standard output stream (stdout) or stderr</p></li>
+     *     <li>{@link ExecFail#STDERR}<p>Any data to stderr</p></li>
+     *     <li>{@link ExecFail#STDOUT}<p>Any data to stdout</p></li>
+     *     <li>{@link ExecFail#ALL}<p>Any of the conditions above</p></li>
+     *     <li>{@link ExecFail#NONE}<p>Never fails</p></li>
+     * </ul>
      *
      * @param fail one or more failure modes
      * @return this operation instance
