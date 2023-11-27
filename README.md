@@ -71,3 +71,5 @@ public void startServer() throws Exception {
             .execute();
 }
 ```
+
+Please check the [ExecOperation documentation](https://rife2.github.io/bld-exec/rife/bld/extension/ExecOperation.html#method-summary) for all available configuration options.
