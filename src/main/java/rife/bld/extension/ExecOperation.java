@@ -44,12 +44,14 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * Configures the command and arguments to be executed.
      * <p>
      * For example:
-     * <p><ul>
-     * <li>{@code command("cmd", "/c", "stop.bat")}</li>
-     * <li>{@code command("./stop.sh"}</li>
-     * </ul></p>
-     * 
-     * @see #command(Collection) 
+     * <ul>
+     *     <li>{@code command("cmd", "/c", "stop.bat")}</li>
+     *     <li>{@code command("./stop.sh"}</li>
+     * </ul>
+     *
+     * @param arg one or more arguments
+     * @return this operation instance
+     * @see #command(Collection)
      */
     public ExecOperation command(String... arg) {
         args_.addAll(List.of(arg));
@@ -59,6 +61,8 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     /**
      * Configures the command and arguments to be executed.
      *
+     * @param args the list of arguments
+     * @return this operation instance
      * @see #command(String...)
      */
     public ExecOperation command(Collection<String> args) {
@@ -74,6 +78,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
         if (project_ == null) {
             LOGGER.severe("A project must be specified.");
         }
+
         var errorMessage = new StringBuilder(27);
 
         final File workDir;
@@ -134,6 +139,8 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     /**
      * Configure the failure mode.
      *
+     * @param fail one or more failure modes
+     * @return this operation instance
      * @see ExecFail
      */
     public ExecOperation fail(ExecFail... fail) {
@@ -143,6 +150,9 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
 
     /**
      * Configures an Exec operation from a {@link BaseProject}.
+     *
+     * @param project the project
+     * @return this operation instance
      */
     public ExecOperation fromProject(BaseProject project) {
         project_ = project;
@@ -161,6 +171,9 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
 
     /**
      * Configures the working directory.
+     *
+     * @param dir the directory path
+     * @return this operation instance
      */
     public ExecOperation workDir(String dir) {
         workDir_ = dir;
