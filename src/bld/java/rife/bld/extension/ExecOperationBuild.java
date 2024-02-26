@@ -45,9 +45,9 @@ public class ExecOperationBuild extends Project {
         scope(compile)
                 .include(dependency("com.uwyn.rife2", "bld", version(1, 8, 0)));
         scope(test)
-                .include(dependency("org.junit.jupiter", "junit-jupiter", version(5, 10, 1)))
-                .include(dependency("org.junit.platform", "junit-platform-console-standalone", version(1, 10, 1)))
-                .include(dependency("org.assertj", "assertj-core", version(3, 25, 2)));
+                .include(dependency("org.junit.jupiter", "junit-jupiter", version(5, 10, 2)))
+                .include(dependency("org.junit.platform", "junit-platform-console-standalone", version(1, 10, 2)))
+                .include(dependency("org.assertj", "assertj-core", version(3, 25, 3)));
 
         javadocOperation()
                 .javadocOptions()
