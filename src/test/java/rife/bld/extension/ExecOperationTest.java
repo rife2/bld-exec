@@ -50,6 +50,7 @@ class ExecOperationTest {
         tmpFile.deleteOnExit();
         new ExecOperation()
                 .fromProject(new Project())
+                .timeout(10)
                 .command("touch", tmpFile.getName())
                 .fail(ExecFail.NORMAL)
                 .execute();

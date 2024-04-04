@@ -35,13 +35,14 @@ public class ExecOperationBuild extends Project {
     public ExecOperationBuild() {
         pkg = "rife.bld.extension";
         name = "ExecOperation";
-        version = version(0, 9, 2);
+        version = version(0, 9, 3);
 
         javaRelease = 17;
+
         downloadSources = true;
         autoDownloadPurge = true;
-        repositories = List.of(MAVEN_CENTRAL, RIFE2_RELEASES);
 
+        repositories = List.of(MAVEN_CENTRAL, RIFE2_RELEASES);
         scope(compile)
                 .include(dependency("com.uwyn.rife2", "bld", version(1, 9, 0)));
         scope(test)
@@ -73,7 +74,7 @@ public class ExecOperationBuild extends Project {
                 .license(
                         new PublishLicense()
                                 .name("The Apache License, Version 2.0")
-                                .url("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                                .url("https://www.apache.org/licenses/LICENSE-2.0.txt")
                 )
                 .scm(
                         new PublishScm()

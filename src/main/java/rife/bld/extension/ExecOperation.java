@@ -38,6 +38,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     private final List<String> args_ = new ArrayList<>();
     private final Set<ExecFail> fail_ = new HashSet<>();
     private BaseProject project_;
+    private int timeout = 30;
     private String workDir_;
 
     /**
@@ -98,7 +99,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
             }
 
             var proc = pb.start();
-            var err = proc.waitFor(30, TimeUnit.SECONDS);
+            var err = proc.waitFor(timeout, TimeUnit.SECONDS);
             var stdout = readStream(proc.getInputStream());
             var stderr = readStream(proc.getErrorStream());
 
@@ -178,6 +179,17 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
             }
         }
         return lines;
+    }
+
+    /**
+     * Configure the command timeout.
+     *
+     * @param timeout The timeout in seconds
+     * @return this operation instance
+     */
+    public ExecOperation timeout(int timeout) {
+        this.timeout = timeout;
+        return this;
     }
 
     /**
