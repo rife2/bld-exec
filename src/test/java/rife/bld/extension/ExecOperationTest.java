@@ -19,10 +19,8 @@ package rife.bld.extension;
 import org.junit.jupiter.api.Test;
 import rife.bld.BaseProject;
 import rife.bld.Project;
-import rife.bld.WebProject;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,18 +29,6 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 
 class ExecOperationTest {
     private static final String FOO = "foo";
-    private static final String HELLO = "Hello";
-
-    @Test
-    void testAll() {
-        assertThatCode(() ->
-                new ExecOperation()
-                        .fromProject(new Project())
-                        .command("date")
-                        .fail(ExecFail.ALL)
-                        .execute()
-        ).isInstanceOf(IOException.class);
-    }
 
     @Test
     void testCat() throws Exception {
@@ -52,20 +38,9 @@ class ExecOperationTest {
                 .fromProject(new Project())
                 .timeout(10)
                 .command("touch", tmpFile.getName())
-                .fail(ExecFail.NORMAL)
                 .execute();
 
         assertThat(tmpFile).exists();
-    }
-
-    @Test
-    void testCommandList() {
-        assertThatCode(() ->
-                new ExecOperation()
-                        .fromProject(new BaseProject())
-                        .command(List.of("logger", "-s", HELLO))
-                        .fail(ExecFail.STDERR)
-                        .execute()).message().startsWith("STDERR -> ").endsWith(HELLO);
     }
 
     @Test
@@ -78,54 +53,32 @@ class ExecOperationTest {
     }
 
     @Test
-    void testExit() {
+    void testExitStatus() {
         assertThatCode(() ->
                 new ExecOperation()
                         .fromProject(new BaseProject())
-                        .command("tail", FOO)
-                        .fail(ExecFail.EXIT)
-                        .execute()).message().startsWith("EXIT ");
+                        .command(List.of("cat", FOO))
+                        .execute()).message().contains("exit status");
     }
 
     @Test
-    void testNone() {
+    void testFailOnExit() {
         assertThatCode(() ->
                 new ExecOperation()
-                        .fromProject(new WebProject())
-                        .command("cat", FOO)
-                        .fail(ExecFail.NONE)
+                        .fromProject(new BaseProject())
+                        .command(List.of("cat", FOO))
+                        .failOnExit(false)
                         .execute()).doesNotThrowAnyException();
     }
 
     @Test
-    void testOutput() {
-        assertThatCode(() ->
-                new ExecOperation()
-                        .fromProject(new WebProject())
-                        .command("echo")
-                        .fail(ExecFail.OUTPUT)
-                        .execute()
-        ).message().isEqualTo("STDOUT -> ");
-    }
-
-    @Test
-    void testStdErr() {
+    void testTimeout() {
         assertThatCode(() ->
                 new ExecOperation()
                         .fromProject(new BaseProject())
-                        .command("logger", "-s", HELLO)
-                        .fail(ExecFail.STDERR)
-                        .execute()).message().startsWith("STDERR -> ").endsWith(HELLO);
-    }
-
-    @Test
-    void testStdOut() {
-        assertThatCode(() ->
-                new ExecOperation()
-                        .fromProject(new BaseProject())
-                        .command("echo", HELLO)
-                        .fail(ExecFail.STDOUT)
-                        .execute()).message().isEqualTo("STDOUT -> Hello");
+                        .timeout(5)
+                        .command(List.of("sleep", "10"))
+                        .execute()).message().contains("timed out");
     }
 
     @Test
@@ -135,7 +88,6 @@ class ExecOperationTest {
                         .fromProject(new BaseProject())
                         .command("echo")
                         .workDir(FOO)
-                        .fail(ExecFail.NORMAL)
-                        .execute()).message().startsWith("Invalid working directory: ").endsWith(FOO);
+                        .execute()).message().startsWith("Invalid work directory: ").endsWith(FOO);
     }
 }

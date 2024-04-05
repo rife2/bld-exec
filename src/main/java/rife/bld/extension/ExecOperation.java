@@ -21,8 +21,9 @@ import rife.bld.operations.AbstractOperation;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,7 +37,7 @@ import java.util.logging.Logger;
 public class ExecOperation extends AbstractOperation<ExecOperation> {
     private static final Logger LOGGER = Logger.getLogger(ExecOperation.class.getName());
     private final List<String> args_ = new ArrayList<>();
-    private final Set<ExecFail> fail_ = new HashSet<>();
+    private boolean failOnExit_ = true;
     private BaseProject project_;
     private int timeout = 30;
     private String workDir_;
@@ -80,8 +81,6 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
             LOGGER.severe("A project must be specified.");
         }
 
-        var errorMessage = new StringBuilder(27);
-
         final File workDir;
         if (workDir_ == null || workDir_.isBlank()) {
             workDir = new File(project_.workDirectory().getAbsolutePath());
@@ -91,6 +90,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
 
         if (workDir.isDirectory()) {
             var pb = new ProcessBuilder();
+            pb.inheritIO();
             pb.command(args_);
             pb.directory(workDir);
 
@@ -100,63 +100,28 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
 
             var proc = pb.start();
             var err = proc.waitFor(timeout, TimeUnit.SECONDS);
-            var stdout = readStream(proc.getInputStream());
-            var stderr = readStream(proc.getErrorStream());
 
             if (!err) {
-                errorMessage.append("TIMEOUT");
-            } else if (!fail_.contains(ExecFail.NONE)) {
-                var all = fail_.contains(ExecFail.ALL);
-                var output = fail_.contains(ExecFail.OUTPUT);
-                if ((all || fail_.contains(ExecFail.EXIT) || fail_.contains(ExecFail.NORMAL)) && proc.exitValue() > 0) {
-                    errorMessage.append("EXIT ").append(proc.exitValue());
-                    if (!stderr.isEmpty()) {
-                        errorMessage.append(", STDERR -> ").append(stderr.get(0));
-                    } else if (!stdout.isEmpty()) {
-                        errorMessage.append(", STDOUT -> ").append(stdout.get(0));
-                    }
-                } else if ((all || output || fail_.contains(ExecFail.STDERR) || fail_.contains(ExecFail.NORMAL))
-                        && !stderr.isEmpty()) {
-                    errorMessage.append("STDERR -> ").append(stderr.get(0));
-                } else if ((all || output || fail_.contains(ExecFail.STDOUT)) && !stdout.isEmpty()) {
-                    errorMessage.append("STDOUT -> ").append(stdout.get(0));
-                }
-            }
-
-            if (LOGGER.isLoggable(Level.INFO) && errorMessage.isEmpty() && !stdout.isEmpty()) {
-                for (var l : stdout) {
-                    LOGGER.info(l);
-                }
+                proc.destroy();
+                throw new IOException("The command timed out.");
+            } else if (proc.exitValue() != 0 && failOnExit_) {
+                throw new IOException("The command exit status is: " + proc.exitValue());
             }
         } else {
-            errorMessage.append("Invalid working directory: ").append(workDir.getCanonicalPath());
-        }
-
-        if (!errorMessage.isEmpty()) {
-            throw new IOException(errorMessage.toString());
+            throw new IOException("Invalid work directory: " + workDir);
         }
     }
 
     /**
-     * Configure the failure mode.
+     * Configures whether the operation should fail if the command exit status is not 0.
      * <p>
-     * The failure modes are:
-     * <ul>
-     *     <li>{@link ExecFail#EXIT}<p>Exit value > 0</p></li>
-     *     <li>{@link ExecFail#NORMAL}<p>Exit value > 0 or any data to the standard error stream (stderr)</p></li>
-     *     <li>{@link ExecFail#OUTPUT}<p>Any data to the standard output stream (stdout) or stderr</p></li>
-     *     <li>{@link ExecFail#STDERR}<p>Any data to stderr</p></li>
-     *     <li>{@link ExecFail#STDOUT}<p>Any data to stdout</p></li>
-     *     <li>{@link ExecFail#ALL}<p>Any of the conditions above</p></li>
-     *     <li>{@link ExecFail#NONE}<p>Never fails</p></li>
-     * </ul>
+     * Default is {@code TRUE}
      *
-     * @param fail one or more failure modes
-     * @return this operation instance
-     * @see ExecFail
+     * @param failOnExit The fail on exit toggle
+     * @return this operation instance.
      */
-    public ExecOperation fail(ExecFail... fail) {
-        fail_.addAll(Set.of(fail));
+    public ExecOperation failOnExit(boolean failOnExit) {
+        failOnExit_ = failOnExit;
         return this;
     }
 
@@ -171,16 +136,6 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
         return this;
     }
 
-    private List<String> readStream(InputStream stream) {
-        var lines = new ArrayList<String>();
-        try (var scanner = new Scanner(stream)) {
-            while (scanner.hasNextLine()) {
-                lines.add(scanner.nextLine());
-            }
-        }
-        return lines;
-    }
-
     /**
      * Configure the command timeout.
      *
@@ -193,7 +148,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     }
 
     /**
-     * Configures the working directory.
+     * Configures the work directory.
      *
      * @param dir the directory path
      * @return this operation instance

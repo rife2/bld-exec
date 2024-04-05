@@ -21,10 +21,9 @@ public void startServer() throws Exception {
 }
 ```
 
-### Failure Modes
+## Exit Status
 
-Use the `fail` function to specify whether data returned to the standard streams and/or an abnormal exit value
-constitute a failure.
+Use the `failOnExit` function to specify whether a command non-zero exit status constitutes a failure.
 
 ```java
 @BuildCommand
@@ -38,28 +37,14 @@ public void startServer() throws Exception {
     new ExecOperation()
             .fromProject(this)
             .command(cmds)
-            .fail(ExecFail.STDERR)
+            .failOneExit(false)
             .execute();
 }
 ```
 
-The following predefined values are available:
+## Work Directory
 
-| Name              | Failure When                                                     |
-|:------------------|:-----------------------------------------------------------------|
-| `ExecFail.EXIT`   | Exit value > 0                                                   |
-| `ExecFail.NORMAL` | Exit value > 0 or any data to the standard error stream (stderr) |
-| `ExecFail.OUTPUT` | Any data to the standard output stream (stdout) or stderr.       |
-| `ExecFail.STDERR` | Any data to stderr.                                              |
-| `ExecFail.STDOUT` | Any data to stdout.                                              |
-| `ExecFail.ALL`    | Any of the conditions above.                                     |
-| `ExecFail.NONE`   | Never fails.                                                     |
-
-`ExecFail.NORMAL` is the default value.
-
-## Working Directory
-
-You can also specify the working directory:
+You can also specify the work directory:
 
 ```java
 @BuildCommand
