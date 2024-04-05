@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -39,8 +40,8 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     private final List<String> args_ = new ArrayList<>();
     private boolean failOnExit_ = true;
     private BaseProject project_;
-    private int timeout = 30;
-    private String workDir_;
+    private int timeout_ = 30;
+    private File workDir_;
 
     /**
      * Configures the command and arguments to be executed.
@@ -81,11 +82,11 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
             LOGGER.severe("A project must be specified.");
         }
 
-        final File workDir;
-        if (workDir_ == null || workDir_.isBlank()) {
-            workDir = new File(project_.workDirectory().getAbsolutePath());
-        } else {
-            workDir = new File(workDir_);
+        final File workDir = Objects.requireNonNullElseGet(workDir_,
+                () -> new File(project_.workDirectory().getAbsolutePath()));
+
+        if (LOGGER.isLoggable(Level.INFO)) {
+            LOGGER.info("Working directory: " + workDir.getAbsolutePath());
         }
 
         if (workDir.isDirectory()) {
@@ -99,21 +100,21 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
             }
 
             var proc = pb.start();
-            var err = proc.waitFor(timeout, TimeUnit.SECONDS);
+            var err = proc.waitFor(timeout_, TimeUnit.SECONDS);
 
             if (!err) {
                 proc.destroy();
                 throw new IOException("The command timed out.");
             } else if (proc.exitValue() != 0 && failOnExit_) {
-                throw new IOException("The command exit status is: " + proc.exitValue());
+                throw new IOException("The command exit value/status is: " + proc.exitValue());
             }
         } else {
-            throw new IOException("Invalid work directory: " + workDir);
+            throw new IOException("Invalid working directory: " + workDir);
         }
     }
 
     /**
-     * Configures whether the operation should fail if the command exit status is not 0.
+     * Configures whether the operation should fail if the command exit value/status is not 0.
      * <p>
      * Default is {@code TRUE}
      *
@@ -143,18 +144,28 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @return this operation instance
      */
     public ExecOperation timeout(int timeout) {
-        this.timeout = timeout;
+        timeout_ = timeout;
         return this;
     }
 
     /**
-     * Configures the work directory.
+     * Configures the working directory.
+     *
+     * @param dir the directory
+     * @return this operation instance
+     */
+    public ExecOperation workDir(File dir) {
+        workDir_ = dir;
+        return this;
+    }
+
+    /**
+     * Configures the working directory.
      *
      * @param dir the directory path
      * @return this operation instance
      */
     public ExecOperation workDir(String dir) {
-        workDir_ = dir;
-        return this;
+        return workDir(new File(dir));
     }
 }

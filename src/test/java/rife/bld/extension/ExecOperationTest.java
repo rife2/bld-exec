@@ -53,12 +53,12 @@ class ExecOperationTest {
     }
 
     @Test
-    void testExitStatus() {
+    void testExitValue() {
         assertThatCode(() ->
                 new ExecOperation()
                         .fromProject(new BaseProject())
                         .command(List.of("cat", FOO))
-                        .execute()).message().contains("exit status");
+                        .execute()).message().contains("exit value/status");
     }
 
     @Test
@@ -86,8 +86,18 @@ class ExecOperationTest {
         assertThatCode(() ->
                 new ExecOperation()
                         .fromProject(new BaseProject())
+                        .command("echo", FOO)
+                        .workDir(new File(System.getProperty("java.io.tmpdir")))
+                        .execute()).doesNotThrowAnyException();
+    }
+
+    @Test
+    void testWorkDirInvalid() {
+        assertThatCode(() ->
+                new ExecOperation()
+                        .fromProject(new BaseProject())
                         .command("echo")
                         .workDir(FOO)
-                        .execute()).message().startsWith("Invalid work directory: ").endsWith(FOO);
+                        .execute()).message().startsWith("Invalid working directory: ").endsWith(FOO);
     }
 }
