@@ -35,7 +35,7 @@ class ExecOperationTest {
     void testCommand() {
         var op = new ExecOperation().fromProject(new WebProject())
                 .command(FOO, "bar");
-        assertThat(op.command()).isEqualTo(List.of(FOO, "bar"));
+        assertThat(op.command()).containsExactly(FOO, "bar");
     }
 
     @Test
