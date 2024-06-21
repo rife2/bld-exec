@@ -37,7 +37,7 @@ import java.util.logging.Logger;
  */
 public class ExecOperation extends AbstractOperation<ExecOperation> {
     private static final Logger LOGGER = Logger.getLogger(ExecOperation.class.getName());
-    private final List<String> args_ = new ArrayList<>();
+    private final Collection<String> args_ = new ArrayList<>();
     private boolean failOnExit_ = true;
     private BaseProject project_;
     private int timeout_ = 30;
@@ -60,6 +60,16 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
         args_.addAll(List.of(arg));
         return this;
     }
+
+    /**
+     * Returns the command and arguments to be executed.
+     *
+     * @return the command and arguments
+     */
+    public Collection<String> command() {
+        return args_;
+    }
+
 
     /**
      * Configures the command and arguments to be executed.
@@ -92,7 +102,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
         if (workDir.isDirectory()) {
             var pb = new ProcessBuilder();
             pb.inheritIO();
-            pb.command(args_);
+            pb.command(args_.stream().toList());
             pb.directory(workDir);
 
             if (LOGGER.isLoggable(Level.INFO)) {

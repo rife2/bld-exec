@@ -31,16 +31,10 @@ class ExecOperationTest {
     private static final String FOO = "foo";
 
     @Test
-    void testCat() throws Exception {
-        var tmpFile = new File("hello.tmp");
-        tmpFile.deleteOnExit();
-        new ExecOperation()
-                .fromProject(new Project())
-                .timeout(10)
-                .command("touch", tmpFile.getName())
-                .execute();
-
-        assertThat(tmpFile).exists();
+    void testCommand() {
+        var op = new ExecOperation().fromProject(new WebProject())
+                .command(FOO, "bar");
+        assertThat(op.command()).isEqualTo(List.of(FOO, "bar"));
     }
 
     @Test
