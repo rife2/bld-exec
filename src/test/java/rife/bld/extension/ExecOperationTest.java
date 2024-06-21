@@ -19,6 +19,7 @@ package rife.bld.extension;
 import org.junit.jupiter.api.Test;
 import rife.bld.BaseProject;
 import rife.bld.Project;
+import rife.bld.WebProject;
 
 import java.io.File;
 import java.util.List;
@@ -57,32 +58,49 @@ class ExecOperationTest {
 
     @Test
     void testFailOnExit() {
-        assertThatCode(() ->
-                new ExecOperation()
-                        .fromProject(new BaseProject())
-                        .command(List.of("cat", FOO))
-                        .failOnExit(false)
-                        .execute()).doesNotThrowAnyException();
+        var op = new ExecOperation()
+                .fromProject(new BaseProject())
+                .command(List.of("cat", FOO))
+                .failOnExit(false);
+        assertThat(op.isFailOnExit()).isFalse();
+        assertThatCode(op::execute).doesNotThrowAnyException();
+
+        op.failOnExit(true);
+        assertThat(op.isFailOnExit()).isTrue();
     }
 
     @Test
     void testTimeout() {
-        assertThatCode(() ->
-                new ExecOperation()
-                        .fromProject(new BaseProject())
-                        .timeout(5)
-                        .command(List.of("sleep", "10"))
-                        .execute()).message().contains("timed out");
+        var op = new ExecOperation()
+                .fromProject(new BaseProject())
+                .timeout(5)
+                .command(List.of("sleep", "10"));
+        assertThat(op.timeout()).isEqualTo(5);
+        assertThatCode(op::execute).message().contains("timed out");
+    }
+
+    @Test
+    void testTouch() throws Exception {
+        var tmpFile = new File("hello.tmp");
+        tmpFile.deleteOnExit();
+        new ExecOperation()
+                .fromProject(new Project())
+                .timeout(10)
+                .command("touch", tmpFile.getName())
+                .execute();
+
+        assertThat(tmpFile).exists();
     }
 
     @Test
     void testWorkDir() {
-        assertThatCode(() ->
-                new ExecOperation()
-                        .fromProject(new BaseProject())
-                        .command("echo", FOO)
-                        .workDir(new File(System.getProperty("java.io.tmpdir")))
-                        .execute()).doesNotThrowAnyException();
+        var workDir = new File(System.getProperty("java.io.tmpdir"));
+        var op = new ExecOperation()
+                .fromProject(new BaseProject())
+                .command("echo", FOO)
+                .workDir(workDir);
+        assertThat(op.workDir()).isEqualTo(workDir);
+        assertThatCode(op::execute).doesNotThrowAnyException();
     }
 
     @Test

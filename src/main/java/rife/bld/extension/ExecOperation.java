@@ -148,6 +148,15 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     }
 
     /**
+     * Returns whether the operation should fail if the command exit value/status is not 0.
+     *
+     * @return {@code true} or {@code false}
+     */
+    public boolean isFailOnExit() {
+        return failOnExit_;
+    }
+
+    /**
      * Configure the command timeout.
      *
      * @param timeout The timeout in seconds
@@ -156,6 +165,15 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     public ExecOperation timeout(int timeout) {
         timeout_ = timeout;
         return this;
+    }
+
+    /**
+     * Returns the command timeout.
+     *
+     * @return the timeout
+     */
+    public int timeout() {
+        return timeout_;
     }
 
     /**
@@ -177,5 +195,14 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      */
     public ExecOperation workDir(String dir) {
         return workDir(new File(dir));
+    }
+
+    /**
+     * Returns the working directory.
+     *
+     * @return the directory
+     */
+    public File workDir() {
+        return workDir_;
     }
 }
