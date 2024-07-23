@@ -18,9 +18,9 @@ package rife.bld.extension;
 
 import rife.bld.BaseProject;
 import rife.bld.operations.AbstractOperation;
+import rife.bld.operations.exceptions.ExitStatusException;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -89,37 +89,49 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     @Override
     public void execute() throws Exception {
         if (project_ == null) {
-            LOGGER.severe("A project must be specified.");
-        }
-
-        final File workDir = Objects.requireNonNullElseGet(workDir_,
-                () -> new File(project_.workDirectory().getAbsolutePath()));
-
-        if (LOGGER.isLoggable(Level.INFO)) {
-            LOGGER.info("Working directory: " + workDir.getAbsolutePath());
-        }
-
-        if (workDir.isDirectory()) {
-            var pb = new ProcessBuilder();
-            pb.inheritIO();
-            pb.command(args_.stream().toList());
-            pb.directory(workDir);
+            if (LOGGER.isLoggable(Level.SEVERE) && !silent()) {
+                LOGGER.severe("A project must be specified.");
+            }
+            throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
+        } else {
+            final File workDir = Objects.requireNonNullElseGet(workDir_,
+                    () -> new File(project_.workDirectory().getAbsolutePath()));
 
             if (LOGGER.isLoggable(Level.INFO)) {
-                LOGGER.info(String.join(" ", args_));
+                LOGGER.info("Working directory: " + workDir.getAbsolutePath());
             }
 
-            var proc = pb.start();
-            var err = proc.waitFor(timeout_, TimeUnit.SECONDS);
+            if (workDir.isDirectory()) {
+                var pb = new ProcessBuilder();
+                pb.inheritIO();
+                pb.command(args_.stream().toList());
+                pb.directory(workDir);
 
-            if (!err) {
-                proc.destroy();
-                throw new IOException("The command timed out.");
-            } else if (proc.exitValue() != 0 && failOnExit_) {
-                throw new IOException("The command exit value/status is: " + proc.exitValue());
+                if (LOGGER.isLoggable(Level.INFO) && !silent()) {
+                    LOGGER.info(String.join(" ", args_));
+                }
+
+                var proc = pb.start();
+                var err = proc.waitFor(timeout_, TimeUnit.SECONDS);
+
+                if (!err) {
+                    proc.destroy();
+                    if (LOGGER.isLoggable(Level.SEVERE) && !silent()) {
+                        LOGGER.severe("The command timed out.");
+                    }
+                    throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
+                } else if (proc.exitValue() != 0 && failOnExit_) {
+                    if (LOGGER.isLoggable(Level.SEVERE) && !silent()) {
+                        LOGGER.severe("The command exit value/status is: " + proc.exitValue());
+                    }
+                    ExitStatusException.throwOnFailure(proc.exitValue());
+                }
+            } else {
+                if (LOGGER.isLoggable(Level.SEVERE) && !silent()) {
+                    LOGGER.severe("Invalid working directory: " + workDir);
+                }
+                throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
             }
-        } else {
-            throw new IOException("Invalid working directory: " + workDir);
         }
     }
 
