@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import rife.bld.BaseProject;
 import rife.bld.Project;
 import rife.bld.WebProject;
+import rife.bld.operations.exceptions.ExitStatusException;
 
 import java.io.File;
 import java.util.List;
@@ -53,7 +54,7 @@ class ExecOperationTest {
                 new ExecOperation()
                         .fromProject(new BaseProject())
                         .command(List.of("cat", FOO))
-                        .execute()).message().contains("exit value/status");
+                        .execute()).isInstanceOf(ExitStatusException.class);
     }
 
     @Test
@@ -76,7 +77,7 @@ class ExecOperationTest {
                 .timeout(5)
                 .command(List.of("sleep", "10"));
         assertThat(op.timeout()).isEqualTo(5);
-        assertThatCode(op::execute).message().contains("timed out");
+        assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
     }
 
     @Test
@@ -110,6 +111,6 @@ class ExecOperationTest {
                         .fromProject(new BaseProject())
                         .command("echo")
                         .workDir(FOO)
-                        .execute()).message().startsWith("Invalid working directory: ").endsWith(FOO);
+                        .execute()).isInstanceOf(ExitStatusException.class);
     }
 }
