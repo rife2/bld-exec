@@ -21,6 +21,7 @@ import rife.bld.operations.AbstractOperation;
 import rife.bld.operations.exceptions.ExitStatusException;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -57,8 +58,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @see #command(Collection)
      */
     public ExecOperation command(String... arg) {
-        args_.addAll(List.of(arg));
-        return this;
+        return command(List.of(arg));
     }
 
     /**
@@ -198,6 +198,17 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
         workDir_ = dir;
         return this;
     }
+
+    /**
+     * Configures the working directory.
+     *
+     * @param dir the directory
+     * @return this operation instance
+     */
+    public ExecOperation workDir(Path dir) {
+        return workDir(dir.toFile());
+    }
+
 
     /**
      * Configures the working directory.

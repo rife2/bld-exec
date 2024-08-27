@@ -100,7 +100,16 @@ class ExecOperationTest {
                 .fromProject(new BaseProject())
                 .command("echo", FOO)
                 .workDir(workDir);
-        assertThat(op.workDir()).isEqualTo(workDir);
+        assertThat(op.workDir()).as("as file").isEqualTo(workDir);
+        assertThatCode(op::execute).doesNotThrowAnyException();
+
+        var build = "build";
+        op = op.workDir(build);
+        assertThat(op.workDir()).as("as string").isEqualTo(new File(build));
+        assertThatCode(op::execute).doesNotThrowAnyException();
+
+        op = op.workDir(workDir.toPath());
+        assertThat(op.workDir()).as("as path").isEqualTo(workDir);
         assertThatCode(op::execute).doesNotThrowAnyException();
     }
 
