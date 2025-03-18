@@ -7,7 +7,15 @@
 [![Snapshot](https://flat.badgen.net/maven/v/metadata-url/repo.rife2.com/snapshots/com/uwyn/rife2/bld-exec/maven-metadata.xml?label=snapshot)](https://repo.rife2.com/#/snapshots/com/uwyn/rife2/bld-exec)
 [![GitHub CI](https://github.com/rife2/bld-exec/actions/workflows/bld.yml/badge.svg)](https://github.com/rife2/bld-exec/actions/workflows/bld.yml)
 
-To install, please refer to the [extensions documentation](https://github.com/rife2/bld/wiki/Extensions).
+To install the latest version, add the following to the `lib/bld/bld-wrapper.properties` file:
+
+```properties
+bld.extension-exec=com.uwyn.rife2:bld-exec
+```
+
+For more information, please refer to the [extensions](https://github.com/rife2/bld/wiki/Extensions) documentation.
+
+## Execute a Command
 
 To execute a command at the command line, add the following to your build file:
 
