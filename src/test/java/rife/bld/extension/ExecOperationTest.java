@@ -31,11 +31,10 @@ import java.util.Locale;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
-
+@SuppressWarnings("PMD.AvoidDuplicateLiterals")
 class ExecOperationTest {
     private static final String FOO = "foo";
     private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase(Locale.US).contains("win");
-    private static final String CAT = IS_WINDOWS ? "type" : "cat";
 
     @Test
     void testCommand() {
@@ -55,18 +54,30 @@ class ExecOperationTest {
 
     @Test
     void testExitValue() {
+        List<String> cat;
+        if (IS_WINDOWS) {
+            cat = List.of("cmd", "/c", "type", FOO);
+        } else {
+            cat = List.of("cat", FOO);
+        }
         assertThatCode(() ->
                 new ExecOperation()
                         .fromProject(new BaseProject())
-                        .command(List.of(CAT, FOO))
+                        .command(cat)
                         .execute()).isInstanceOf(ExitStatusException.class);
     }
 
     @Test
     void testFailOnExit() {
+        List<String> cat;
+        if (IS_WINDOWS) {
+            cat = List.of("cmd", "/c", "type", FOO);
+        } else {
+            cat = List.of("cat", FOO);
+        }
         var op = new ExecOperation()
                 .fromProject(new BaseProject())
-                .command(List.of(CAT, FOO))
+                .command(cat)
                 .failOnExit(false);
         assertThat(op.isFailOnExit()).isFalse();
         assertThatCode(op::execute).doesNotThrowAnyException();
@@ -79,7 +90,7 @@ class ExecOperationTest {
     void testTimeout() {
         List<String> sleep;
         if (IS_WINDOWS) {
-            sleep = List.of("timeout", "/t", "10");
+            sleep = List.of("cmd", "/c", "timeout", "/t", "10");
         } else {
             sleep = List.of("sleep", "10");
         }
@@ -107,10 +118,16 @@ class ExecOperationTest {
 
     @Test
     void testWorkDir() {
+        List<String> echo;
+        if (IS_WINDOWS) {
+            echo = List.of("cmd", "/c", "echo", FOO);
+        } else {
+            echo = List.of("echo", FOO);
+        }
         var workDir = new File(System.getProperty("java.io.tmpdir"));
         var op = new ExecOperation()
                 .fromProject(new BaseProject())
-                .command("echo", FOO)
+                .command(echo)
                 .workDir(workDir);
         assertThat(op.workDir()).as("as file").isEqualTo(workDir);
         assertThatCode(op::execute).doesNotThrowAnyException();
