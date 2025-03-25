@@ -17,6 +17,8 @@
 package rife.bld.extension;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import rife.bld.BaseProject;
 import rife.bld.Project;
 import rife.bld.WebProject;
@@ -24,6 +26,7 @@ import rife.bld.operations.exceptions.ExitStatusException;
 
 import java.io.File;
 import java.util.List;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -31,6 +34,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 
 class ExecOperationTest {
     private static final String FOO = "foo";
+    private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase(Locale.US).contains("win");
+    private static final String CAT = IS_WINDOWS ? "type" : "cat";
 
     @Test
     void testCommand() {
@@ -53,7 +58,7 @@ class ExecOperationTest {
         assertThatCode(() ->
                 new ExecOperation()
                         .fromProject(new BaseProject())
-                        .command(List.of("cat", FOO))
+                        .command(List.of(CAT, FOO))
                         .execute()).isInstanceOf(ExitStatusException.class);
     }
 
@@ -61,7 +66,7 @@ class ExecOperationTest {
     void testFailOnExit() {
         var op = new ExecOperation()
                 .fromProject(new BaseProject())
-                .command(List.of("cat", FOO))
+                .command(List.of(CAT, FOO))
                 .failOnExit(false);
         assertThat(op.isFailOnExit()).isFalse();
         assertThatCode(op::execute).doesNotThrowAnyException();
@@ -72,15 +77,22 @@ class ExecOperationTest {
 
     @Test
     void testTimeout() {
+        List<String> sleep;
+        if (IS_WINDOWS) {
+            sleep = List.of("timeout", "/t", "10");
+        } else {
+            sleep = List.of("sleep", "10");
+        }
         var op = new ExecOperation()
                 .fromProject(new BaseProject())
                 .timeout(5)
-                .command(List.of("sleep", "10"));
+                .command(sleep);
         assertThat(op.timeout()).isEqualTo(5);
         assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
     }
 
     @Test
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void testTouch() throws Exception {
         var tmpFile = new File("hello.tmp");
         tmpFile.deleteOnExit();
