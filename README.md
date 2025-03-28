@@ -37,7 +37,7 @@ Use the `failOnExit` function to specify whether a command non-zero exit value (
 @BuildCommand
 public void startServer() throws Exception {
     final List<String> cmds;
-    if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+    if (System.getProperty("os.name").toLowerCase().contains("win")) {
         cmds = List.of("cmd", "/c", "stop.bat");
     } else {
         cmds = List.of("./stop.sh");
