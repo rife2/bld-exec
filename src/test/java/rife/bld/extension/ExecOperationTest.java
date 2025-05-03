@@ -31,124 +31,126 @@ import java.util.Locale;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
-@SuppressWarnings("PMD.AvoidDuplicateLiterals")
 class ExecOperationTest {
+    private static final String BAR = "bar";
+    private static final String CAT_COMMAND = "cat";
+    private static final String ECHO_COMMAND = "echo";
     private static final String FOO = "foo";
     private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase(Locale.US).contains("win");
+    // Unix-specific commands
+    private static final List<String> UNIX_CAT_COMMAND = List.of(CAT_COMMAND, FOO);
+    private static final List<String> UNIX_ECHO_COMMAND = List.of(ECHO_COMMAND, FOO);
+    private static final List<String> UNIX_SLEEP_COMMAND = List.of("sleep", "10");
+    // Windows-specific commands
+    private static final List<String> WINDOWS_CAT_COMMAND = List.of("cmd", "/c", "type", FOO);
+    private static final List<String> WINDOWS_ECHO_COMMAND = List.of("cmd", "/c", ECHO_COMMAND, FOO);
+    private static final List<String> WINDOWS_SLEEP_COMMAND = List.of("cmd", "/c", "timeout", "/t", "10");
 
-    @Test
-    void testCommand() {
-        var op = new ExecOperation().fromProject(new WebProject())
-                .command(FOO, "bar");
-        assertThat(op.command()).containsExactly(FOO, "bar");
+    private ExecOperation createBasicExecOperation() {
+        return new ExecOperation().fromProject(new BaseProject());
+    }
+
+    private List<String> getPlatformSpecificCommand(List<String> windowsCommand, List<String> unixCommand) {
+        return IS_WINDOWS ? windowsCommand : unixCommand;
     }
 
     @Test
-    void testException() {
-        assertThatCode(() ->
-                new ExecOperation()
-                        .fromProject(new BaseProject())
-                        .command(FOO)
-                        .execute()).message().startsWith("Cannot run program \"" + FOO + '"');
+    void testCommand() {
+        var execOperation = new ExecOperation()
+                .fromProject(new WebProject())
+                .command(FOO, BAR);
+        assertThat(execOperation.command()).containsExactly(FOO, BAR);
+    }
+
+    @Test
+    void testCommandTimeout() {
+        var sleepCommand = getPlatformSpecificCommand(WINDOWS_SLEEP_COMMAND, UNIX_SLEEP_COMMAND);
+        var execOperation = createBasicExecOperation()
+                .timeout(5)
+                .command(sleepCommand);
+
+        assertThat(execOperation.timeout()).isEqualTo(5);
+        assertThatCode(execOperation::execute).isInstanceOf(ExitStatusException.class);
     }
 
     @Test
     void testExitValue() {
-        List<String> cat;
-        if (IS_WINDOWS) {
-            cat = List.of("cmd", "/c", "type", FOO);
-        } else {
-            cat = List.of("cat", FOO);
-        }
+        var catCommand = getPlatformSpecificCommand(WINDOWS_CAT_COMMAND, UNIX_CAT_COMMAND);
         assertThatCode(() ->
-                new ExecOperation()
-                        .fromProject(new BaseProject())
-                        .command(cat)
-                        .execute()).isInstanceOf(ExitStatusException.class);
+                createBasicExecOperation()
+                        .command(catCommand)
+                        .execute())
+                .isInstanceOf(ExitStatusException.class);
     }
 
     @Test
-    void testFailOnExit() {
-        List<String> cat;
-        if (IS_WINDOWS) {
-            cat = List.of("cmd", "/c", "type", FOO);
-        } else {
-            cat = List.of("cat", FOO);
-        }
-        var op = new ExecOperation()
-                .fromProject(new BaseProject())
-                .command(cat)
+    void testFailOnExitConfiguration() {
+        var catCommand = getPlatformSpecificCommand(WINDOWS_CAT_COMMAND, UNIX_CAT_COMMAND);
+        var execOperation = createBasicExecOperation()
+                .command(catCommand)
                 .failOnExit(false);
-        assertThat(op.isFailOnExit()).isFalse();
-        assertThatCode(op::execute).doesNotThrowAnyException();
 
-        op.failOnExit(true);
-        assertThat(op.isFailOnExit()).isTrue();
+        assertThat(execOperation.isFailOnExit()).isFalse();
+        assertThatCode(execOperation::execute).doesNotThrowAnyException();
+
+        execOperation.failOnExit(true);
+        assertThat(execOperation.isFailOnExit()).isTrue();
     }
 
     @Test
-    void testTimeout() {
-        List<String> sleep;
-        if (IS_WINDOWS) {
-            sleep = List.of("cmd", "/c", "timeout", "/t", "10");
-        } else {
-            sleep = List.of("sleep", "10");
-        }
-        var op = new ExecOperation()
-                .fromProject(new BaseProject())
-                .timeout(5)
-                .command(sleep);
-        assertThat(op.timeout()).isEqualTo(5);
-        assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
+    void testInvalidCommandException() {
+        assertThatCode(() ->
+                createBasicExecOperation()
+                        .command(FOO)
+                        .execute())
+                .message()
+                .startsWith("Cannot run program \"" + FOO + '"');
+    }
+
+    @Test
+    void testInvalidWorkDirectory() {
+        assertThatCode(() ->
+                createBasicExecOperation()
+                        .command(ECHO_COMMAND)
+                        .workDir(FOO)
+                        .execute())
+                .isInstanceOf(ExitStatusException.class);
     }
 
     @Test
     @EnabledOnOs({OS.LINUX, OS.MAC})
-    void testTouch() throws Exception {
-        var tmpFile = new File("hello.tmp");
-        tmpFile.deleteOnExit();
+    void testTouchCommand() throws Exception {
+        var tempFile = new File("hello.tmp");
+        tempFile.deleteOnExit();
+
         new ExecOperation()
                 .fromProject(new Project())
                 .timeout(10)
-                .command("touch", tmpFile.getName())
+                .command("touch", tempFile.getName())
                 .execute();
 
-        assertThat(tmpFile).exists();
+        assertThat(tempFile).exists();
     }
 
     @Test
-    void testWorkDir() {
-        List<String> echo;
-        if (IS_WINDOWS) {
-            echo = List.of("cmd", "/c", "echo", FOO);
-        } else {
-            echo = List.of("echo", FOO);
-        }
-        var workDir = new File(System.getProperty("java.io.tmpdir"));
-        var op = new ExecOperation()
-                .fromProject(new BaseProject())
-                .command(echo)
-                .workDir(workDir);
-        assertThat(op.workDir()).as("as file").isEqualTo(workDir);
-        assertThatCode(op::execute).doesNotThrowAnyException();
+    void testWorkDirectoryConfiguration() {
+        var echoCommand = getPlatformSpecificCommand(WINDOWS_ECHO_COMMAND, UNIX_ECHO_COMMAND);
+        var tempDirectory = new File(System.getProperty("java.io.tmpdir"));
 
-        var build = "build";
-        op = op.workDir(build);
-        assertThat(op.workDir()).as("as string").isEqualTo(new File(build));
-        assertThatCode(op::execute).doesNotThrowAnyException();
+        var execOperation = createBasicExecOperation()
+                .command(echoCommand)
+                .workDir(tempDirectory);
 
-        op = op.workDir(workDir.toPath());
-        assertThat(op.workDir()).as("as path").isEqualTo(workDir);
-        assertThatCode(op::execute).doesNotThrowAnyException();
-    }
+        assertThat(execOperation.workDir()).as("File-based working directory").isEqualTo(tempDirectory);
+        assertThatCode(execOperation::execute).doesNotThrowAnyException();
 
-    @Test
-    void testWorkDirInvalid() {
-        assertThatCode(() ->
-                new ExecOperation()
-                        .fromProject(new BaseProject())
-                        .command("echo")
-                        .workDir(FOO)
-                        .execute()).isInstanceOf(ExitStatusException.class);
+        var buildDir = "build";
+        execOperation = execOperation.workDir(buildDir);
+        assertThat(execOperation.workDir()).as("String-based working directory").isEqualTo(new File(buildDir));
+        assertThatCode(execOperation::execute).doesNotThrowAnyException();
+
+        execOperation = execOperation.workDir(tempDirectory.toPath());
+        assertThat(execOperation.workDir()).as("Path-based working directory").isEqualTo(tempDirectory);
+        assertThatCode(execOperation::execute).doesNotThrowAnyException();
     }
 }
