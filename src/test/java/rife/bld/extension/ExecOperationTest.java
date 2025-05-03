@@ -69,8 +69,9 @@ class ExecOperationTest {
                 .timeout(5)
                 .command(sleepCommand);
 
-        assertThat(execOperation.timeout()).isEqualTo(5);
-        assertThatCode(execOperation::execute).isInstanceOf(ExitStatusException.class);
+        assertThat(execOperation.timeout()).as("timeout should be 5 seconds").isEqualTo(5);
+        assertThatCode(execOperation::execute).as("should fail execution due to timeout")
+                .isInstanceOf(ExitStatusException.class);
     }
 
     @Test
@@ -90,11 +91,11 @@ class ExecOperationTest {
                 .command(catCommand)
                 .failOnExit(false);
 
-        assertThat(execOperation.isFailOnExit()).isFalse();
-        assertThatCode(execOperation::execute).doesNotThrowAnyException();
+        assertThat(execOperation.isFailOnExit()).as("fail on exit should be false by default").isFalse();
+        assertThatCode(execOperation::execute).as("should execute without failing").doesNotThrowAnyException();
 
         execOperation.failOnExit(true);
-        assertThat(execOperation.isFailOnExit()).isTrue();
+        assertThat(execOperation.isFailOnExit()).as("fail on exit should be true").isTrue();
     }
 
     @Test
@@ -142,15 +143,21 @@ class ExecOperationTest {
                 .workDir(tempDirectory);
 
         assertThat(execOperation.workDir()).as("File-based working directory").isEqualTo(tempDirectory);
-        assertThatCode(execOperation::execute).doesNotThrowAnyException();
+        assertThatCode(execOperation::execute)
+                .as("setting a file-based working directory should execute without failing")
+                .doesNotThrowAnyException();
 
         var buildDir = "build";
         execOperation = execOperation.workDir(buildDir);
         assertThat(execOperation.workDir()).as("String-based working directory").isEqualTo(new File(buildDir));
-        assertThatCode(execOperation::execute).doesNotThrowAnyException();
+        assertThatCode(execOperation::execute)
+                .as("setting a string-based working directory should execute without failing")
+                .doesNotThrowAnyException();
 
         execOperation = execOperation.workDir(tempDirectory.toPath());
         assertThat(execOperation.workDir()).as("Path-based working directory").isEqualTo(tempDirectory);
-        assertThatCode(execOperation::execute).doesNotThrowAnyException();
+        assertThatCode(execOperation::execute)
+                .as("setting a path-based working directory should execute without failing")
+                .doesNotThrowAnyException();
     }
 }

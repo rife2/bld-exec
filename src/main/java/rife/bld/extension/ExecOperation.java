@@ -97,8 +97,8 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
             final File workDir = Objects.requireNonNullElseGet(workDir_,
                     () -> new File(project_.workDirectory().getAbsolutePath()));
 
-            if (LOGGER.isLoggable(Level.INFO)) {
-                LOGGER.info("Working directory: " + workDir.getAbsolutePath());
+            if (LOGGER.isLoggable(Level.INFO) && !silent()) {
+                LOGGER.log(Level.INFO, "Working directory: {0}", workDir.getAbsolutePath());
             }
 
             if (workDir.isDirectory()) {
@@ -122,13 +122,13 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
                     throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
                 } else if (proc.exitValue() != 0 && failOnExit_) {
                     if (LOGGER.isLoggable(Level.SEVERE) && !silent()) {
-                        LOGGER.severe("The command exit value/status is: " + proc.exitValue());
+                        LOGGER.log(Level.SEVERE, "The command exit value/status is: {0}", proc.exitValue());
                     }
                     ExitStatusException.throwOnFailure(proc.exitValue());
                 }
             } else {
                 if (LOGGER.isLoggable(Level.SEVERE) && !silent()) {
-                    LOGGER.severe("Invalid working directory: " + workDir);
+                    LOGGER.log(Level.SEVERE, "Invalid working directory: {0}", workDir);
                 }
                 throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
             }
