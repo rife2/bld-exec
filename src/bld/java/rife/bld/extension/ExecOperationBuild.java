@@ -43,11 +43,15 @@ public class ExecOperationBuild extends Project {
         repositories = List.of(MAVEN_LOCAL, MAVEN_CENTRAL, RIFE2_RELEASES, RIFE2_SNAPSHOTS);
         
         scope(compile)
-                .include(dependency("com.uwyn.rife2", "bld", version(2, 3, 0)));
+                .include(dependency("com.uwyn.rife2", "bld",
+                        version(2, 3, 0)));
         scope(test)
-                .include(dependency("org.junit.jupiter", "junit-jupiter", version(5, 13, 3)))
-                .include(dependency("org.junit.platform", "junit-platform-console-standalone", version(1, 13, 3)))
-                .include(dependency("org.assertj", "assertj-core", version(3, 27, 3)));
+                .include(dependency("org.junit.jupiter", "junit-jupiter",
+                        version(5, 13, 4)))
+                .include(dependency("org.junit.platform", "junit-platform-console-standalone",
+                        version(1, 13, 4)))
+                .include(dependency("org.assertj", "assertj-core",
+                        version(3, 27, 4)));
 
         javadocOperation()
                 .javadocOptions()
