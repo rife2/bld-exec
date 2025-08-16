@@ -16,23 +16,25 @@
 
 package rife.bld.extension;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import rife.bld.BaseProject;
 import rife.bld.Project;
 import rife.bld.WebProject;
+import rife.bld.extension.testing.TestLogHandler;
 import rife.bld.operations.exceptions.ExitStatusException;
 
 import java.io.File;
 import java.util.List;
 import java.util.Locale;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+@SuppressWarnings("PMD.TestClassWithoutTestCases")
 class ExecOperationTest {
     private static final String BAR = "bar";
     private static final String CAT_COMMAND = "cat";
@@ -48,12 +50,31 @@ class ExecOperationTest {
     private static final List<String> WINDOWS_ECHO_COMMAND = List.of("cmd", "/c", ECHO_COMMAND, FOO);
     private static final List<String> WINDOWS_SLEEP_COMMAND = List.of("cmd", "/c", "timeout", "/t", "10");
 
+    @SuppressWarnings("LoggerInitializedWithForeignClass")
+    private final Logger logger = Logger.getLogger(ExecOperation.class.getName());
+    private TestLogHandler logHandler = new TestLogHandler();
+
     private ExecOperation createBasicExecOperation() {
         return new ExecOperation().fromProject(new BaseProject());
     }
 
     private List<String> getPlatformSpecificCommand(List<String> windowsCommand, List<String> unixCommand) {
         return IS_WINDOWS ? windowsCommand : unixCommand;
+    }
+
+    @BeforeEach
+    void setupLogging() {
+        logHandler = new TestLogHandler();
+        logger.addHandler(logHandler);
+        logger.setLevel(Level.ALL);
+        logHandler.setLevel(Level.ALL);
+    }
+
+    @AfterEach
+    void teardownLogging() {
+        if (logHandler != null) {
+            logger.removeHandler(logHandler);
+        }
     }
 
     @Nested
@@ -80,6 +101,60 @@ class ExecOperationTest {
         }
 
         @Test
+        void commandTimeoutWithSilent() {
+            var sleepCommand = getPlatformSpecificCommand(WINDOWS_SLEEP_COMMAND, UNIX_SLEEP_COMMAND);
+            var execOperation = createBasicExecOperation()
+                    .timeout(1)
+                    .silent(true)
+                    .command(sleepCommand);
+
+            assertThatCode(execOperation::execute).as("should fail execution due to timeout")
+                    .isInstanceOf(ExitStatusException.class);
+            assertThat(logHandler.isEmpty()).isTrue();
+        }
+
+        @Test
+        void commandTimeoutWithoutLogging() {
+            logger.setLevel(Level.OFF);
+            var sleepCommand = getPlatformSpecificCommand(WINDOWS_SLEEP_COMMAND, UNIX_SLEEP_COMMAND);
+            var execOperation = createBasicExecOperation()
+                    .timeout(1)
+                    .command(sleepCommand);
+
+            assertThatCode(execOperation::execute).as("should fail execution due to timeout")
+                    .isInstanceOf(ExitStatusException.class);
+            assertThat(logHandler.isEmpty()).isTrue();
+        }
+
+        @Test
+        void executeWithoutProject() {
+            var op = new ExecOperation().command(ECHO_COMMAND, FOO);
+
+            assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
+        }
+
+        @Test
+        void executeWithoutProjectNoLogging() {
+            logger.setLevel(Level.OFF);
+            var op = new ExecOperation().command(ECHO_COMMAND, FOO);
+
+            assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
+
+            assertThat(logHandler.isEmpty()).isTrue();
+        }
+
+        @Test
+        void executeWithoutProjectWIthSilent() {
+            var op = new ExecOperation()
+                    .command(ECHO_COMMAND, FOO)
+                    .silent(true);
+
+            assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
+
+            assertThat(logHandler.isEmpty()).isTrue();
+        }
+
+        @Test
         void invalidCommandException() {
             assertThatCode(() ->
                     createBasicExecOperation()
@@ -91,15 +166,17 @@ class ExecOperationTest {
 
         @Test
         @EnabledOnOs({OS.LINUX, OS.MAC})
-        void touchCommand() throws Exception {
+        void touchCommand() {
             var tempFile = new File("hello.tmp");
             tempFile.deleteOnExit();
 
-            new ExecOperation()
-                    .fromProject(new Project())
-                    .timeout(10)
-                    .command("touch", tempFile.getName())
-                    .execute();
+            assertThatCode(() ->
+                    new ExecOperation()
+                            .fromProject(new Project())
+                            .timeout(10)
+                            .command("touch", tempFile.getName())
+                            .execute())
+                    .doesNotThrowAnyException();
 
             assertThat(tempFile).exists();
         }
@@ -131,6 +208,31 @@ class ExecOperationTest {
             execOperation.failOnExit(true);
             assertThat(execOperation.isFailOnExit()).as("fail on exit should be true").isTrue();
         }
+
+        @Test
+        void failOnExitNoLogging() {
+            logger.setLevel(Level.OFF);
+            var catCommand = getPlatformSpecificCommand(WINDOWS_CAT_COMMAND, UNIX_CAT_COMMAND);
+            var execOperation = createBasicExecOperation()
+                    .command(catCommand)
+                    .failOnExit(true);
+
+            assertThatCode(execOperation::execute).isInstanceOf(ExitStatusException.class);
+
+            assertThat(logHandler.isEmpty()).isTrue();
+        }
+
+        @Test
+        void failOnExitWithSilent() {
+            var catCommand = getPlatformSpecificCommand(WINDOWS_CAT_COMMAND, UNIX_CAT_COMMAND);
+            var execOperation = createBasicExecOperation()
+                    .command(catCommand)
+                    .silent(true)
+                    .failOnExit(true);
+
+            assertThatCode(execOperation::execute).isInstanceOf(ExitStatusException.class);
+            assertThat(logHandler.isEmpty()).isTrue();
+        }
     }
 
     @Nested
@@ -151,6 +253,32 @@ class ExecOperationTest {
         }
 
         @Test
+        void invalidWorkDirNoLogging() {
+            logger.setLevel(Level.OFF);
+            assertThatCode(() ->
+                    createBasicExecOperation()
+                            .command(ECHO_COMMAND)
+                            .workDir(FOO)
+                            .execute())
+                    .isInstanceOf(ExitStatusException.class);
+
+            assertThat(logHandler.isEmpty()).isTrue();
+        }
+
+        @Test
+        void invalidWorkDirWithSilent() {
+            assertThatCode(() ->
+                    createBasicExecOperation()
+                            .command(ECHO_COMMAND)
+                            .workDir(FOO)
+                            .silent(true)
+                            .execute())
+                    .isInstanceOf(ExitStatusException.class);
+
+            assertThat(logHandler.isEmpty()).isTrue();
+        }
+
+        @Test
         void workDirAsFile() {
             op.workDir(tmpDir);
             assertThat(op.workDir()).as("File-based working directory").isEqualTo(tmpDir);
@@ -161,7 +289,9 @@ class ExecOperationTest {
 
         @Test
         void workDirAsPath() {
-            op.workDir(tmpDir.toPath());
+            var op = createBasicExecOperation()
+                    .command(echoCommand)
+                    .workDir(tmpDir.toPath());
             assertThat(op.workDir()).as("Path-based working directory").isEqualTo(tmpDir);
             assertThatCode(op::execute)
                     .as("setting a path-based working directory should execute without failing")
