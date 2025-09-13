@@ -16,12 +16,17 @@
 
 package rife.bld.extension;
 
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import rife.bld.BaseProject;
 import rife.bld.Project;
 import rife.bld.WebProject;
+import rife.bld.extension.testing.LoggingExtension;
 import rife.bld.extension.testing.TestLogHandler;
 import rife.bld.operations.exceptions.ExitStatusException;
 
@@ -34,6 +39,7 @@ import java.util.logging.Logger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+@ExtendWith(LoggingExtension.class)
 @SuppressWarnings("PMD.TestClassWithoutTestCases")
 class ExecOperationTest {
     private static final String BAR = "bar";
@@ -41,6 +47,19 @@ class ExecOperationTest {
     private static final String ECHO_COMMAND = "echo";
     private static final String FOO = "foo";
     private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase(Locale.US).contains("win");
+
+    @SuppressWarnings("LoggerInitializedWithForeignClass")
+    private static final Logger LOGGER = Logger.getLogger(ExecOperation.class.getName());
+    private static final TestLogHandler TEST_LOG_HANDLER = new TestLogHandler();
+
+    @RegisterExtension
+    @SuppressWarnings("unused")
+    private static final LoggingExtension LOGGING_EXTENSION = new LoggingExtension(
+            LOGGER,
+            TEST_LOG_HANDLER,
+            Level.ALL
+    );
+
     // Unix-specific commands
     private static final List<String> UNIX_CAT_COMMAND = List.of(CAT_COMMAND, FOO);
     private static final List<String> UNIX_ECHO_COMMAND = List.of(ECHO_COMMAND, FOO);
@@ -50,31 +69,12 @@ class ExecOperationTest {
     private static final List<String> WINDOWS_ECHO_COMMAND = List.of("cmd", "/c", ECHO_COMMAND, FOO);
     private static final List<String> WINDOWS_SLEEP_COMMAND = List.of("cmd", "/c", "timeout", "/t", "10");
 
-    @SuppressWarnings("LoggerInitializedWithForeignClass")
-    private final Logger logger = Logger.getLogger(ExecOperation.class.getName());
-    private TestLogHandler logHandler = new TestLogHandler();
-
     private ExecOperation createBasicExecOperation() {
         return new ExecOperation().fromProject(new BaseProject());
     }
 
     private List<String> getPlatformSpecificCommand(List<String> windowsCommand, List<String> unixCommand) {
         return IS_WINDOWS ? windowsCommand : unixCommand;
-    }
-
-    @BeforeEach
-    void setupLogging() {
-        logHandler = new TestLogHandler();
-        logger.addHandler(logHandler);
-        logger.setLevel(Level.ALL);
-        logHandler.setLevel(Level.ALL);
-    }
-
-    @AfterEach
-    void teardownLogging() {
-        if (logHandler != null) {
-            logger.removeHandler(logHandler);
-        }
     }
 
     @Nested
@@ -110,12 +110,12 @@ class ExecOperationTest {
 
             assertThatCode(execOperation::execute).as("should fail execution due to timeout")
                     .isInstanceOf(ExitStatusException.class);
-            assertThat(logHandler.isEmpty()).isTrue();
+            assertThat(TEST_LOG_HANDLER.isEmpty()).isTrue();
         }
 
         @Test
         void commandTimeoutWithoutLogging() {
-            logger.setLevel(Level.OFF);
+            LOGGER.setLevel(Level.OFF);
             var sleepCommand = getPlatformSpecificCommand(WINDOWS_SLEEP_COMMAND, UNIX_SLEEP_COMMAND);
             var execOperation = createBasicExecOperation()
                     .timeout(1)
@@ -123,7 +123,7 @@ class ExecOperationTest {
 
             assertThatCode(execOperation::execute).as("should fail execution due to timeout")
                     .isInstanceOf(ExitStatusException.class);
-            assertThat(logHandler.isEmpty()).isTrue();
+            assertThat(TEST_LOG_HANDLER.isEmpty()).isTrue();
         }
 
         @Test
@@ -135,12 +135,12 @@ class ExecOperationTest {
 
         @Test
         void executeWithoutProjectNoLogging() {
-            logger.setLevel(Level.OFF);
+            LOGGER.setLevel(Level.OFF);
             var op = new ExecOperation().command(ECHO_COMMAND, FOO);
 
             assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
 
-            assertThat(logHandler.isEmpty()).isTrue();
+            assertThat(TEST_LOG_HANDLER.isEmpty()).isTrue();
         }
 
         @Test
@@ -151,7 +151,7 @@ class ExecOperationTest {
 
             assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
 
-            assertThat(logHandler.isEmpty()).isTrue();
+            assertThat(TEST_LOG_HANDLER.isEmpty()).isTrue();
         }
 
         @Test
@@ -203,7 +203,9 @@ class ExecOperationTest {
                     .failOnExit(false);
 
             assertThat(execOperation.isFailOnExit()).as("fail on exit should be false by default").isFalse();
-            assertThatCode(execOperation::execute).as("should execute without failing").doesNotThrowAnyException();
+            assertThatCode(execOperation::execute)
+                    .as("should execute without failing")
+                    .doesNotThrowAnyException();
 
             execOperation.failOnExit(true);
             assertThat(execOperation.isFailOnExit()).as("fail on exit should be true").isTrue();
@@ -211,7 +213,7 @@ class ExecOperationTest {
 
         @Test
         void failOnExitNoLogging() {
-            logger.setLevel(Level.OFF);
+            LOGGER.setLevel(Level.OFF);
             var catCommand = getPlatformSpecificCommand(WINDOWS_CAT_COMMAND, UNIX_CAT_COMMAND);
             var execOperation = createBasicExecOperation()
                     .command(catCommand)
@@ -219,7 +221,7 @@ class ExecOperationTest {
 
             assertThatCode(execOperation::execute).isInstanceOf(ExitStatusException.class);
 
-            assertThat(logHandler.isEmpty()).isTrue();
+            assertThat(TEST_LOG_HANDLER.isEmpty()).isTrue();
         }
 
         @Test
@@ -231,7 +233,7 @@ class ExecOperationTest {
                     .failOnExit(true);
 
             assertThatCode(execOperation::execute).isInstanceOf(ExitStatusException.class);
-            assertThat(logHandler.isEmpty()).isTrue();
+            assertThat(TEST_LOG_HANDLER.isEmpty()).isTrue();
         }
     }
 
@@ -254,7 +256,7 @@ class ExecOperationTest {
 
         @Test
         void invalidWorkDirNoLogging() {
-            logger.setLevel(Level.OFF);
+            LOGGER.setLevel(Level.OFF);
             assertThatCode(() ->
                     createBasicExecOperation()
                             .command(ECHO_COMMAND)
@@ -262,7 +264,7 @@ class ExecOperationTest {
                             .execute())
                     .isInstanceOf(ExitStatusException.class);
 
-            assertThat(logHandler.isEmpty()).isTrue();
+            assertThat(TEST_LOG_HANDLER.isEmpty()).isTrue();
         }
 
         @Test
@@ -275,7 +277,7 @@ class ExecOperationTest {
                             .execute())
                     .isInstanceOf(ExitStatusException.class);
 
-            assertThat(logHandler.isEmpty()).isTrue();
+            assertThat(TEST_LOG_HANDLER.isEmpty()).isTrue();
         }
 
         @Test
