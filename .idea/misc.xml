@@ -3,6 +3,8 @@
   <component name="EntryPointsManager">
     <pattern value="rife.bld.extension.ExecOperationBuild" method="jacoco" />
     <pattern value="rife.bld.extension.ExecOperationBuild" method="pmd" />
+    <pattern value="rife.bld.extension.ExecOperationBuild" />
+    <pattern value="rife.bld.extension.ExecOperationBuild" method="reporter" />
   </component>
   <component name="PDMPlugin">
     <option name="customRuleSets">

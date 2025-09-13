@@ -40,7 +40,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 @ExtendWith(LoggingExtension.class)
-@SuppressWarnings("PMD.TestClassWithoutTestCases")
 class ExecOperationTest {
     private static final String BAR = "bar";
     private static final String CAT_COMMAND = "cat";

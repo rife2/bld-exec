@@ -22,6 +22,7 @@ import rife.bld.publish.PublishDeveloper;
 import rife.bld.publish.PublishLicense;
 import rife.bld.publish.PublishScm;
 
+import java.io.File;
 import java.util.List;
 
 import static rife.bld.dependencies.Repository.*;
@@ -41,7 +42,7 @@ public class ExecOperationBuild extends Project {
         autoDownloadPurge = true;
 
         repositories = List.of(MAVEN_LOCAL, MAVEN_CENTRAL, RIFE2_RELEASES, RIFE2_SNAPSHOTS);
-        
+
         scope(compile)
                 .include(dependency("com.uwyn.rife2", "bld",
                         version(2, 3, 0)));
@@ -91,6 +92,21 @@ public class ExecOperationBuild extends Project {
 
     public static void main(String[] args) {
         new ExecOperationBuild().start(args);
+    }
+
+    @BuildCommand(summary = "Runs the JUnit reporter")
+    public void reporter() throws Exception {
+        new JUnitReporterOperation()
+                .fromProject(this)
+                .failOnSummary(true)
+                .execute();
+    }
+
+    @Override
+    public void test() throws Exception {
+        var op = testOperation().fromProject(this);
+        op.testToolOptions().reportsDir(new File("build/test-results/test/"));
+        op.execute();
     }
 
     @BuildCommand(summary = "Runs PMD analysis")
