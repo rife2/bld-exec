@@ -33,7 +33,7 @@ import static rife.bld.operations.JavadocOptions.DocLinkOption.NO_MISSING;
 public class ExecOperationBuild extends Project {
     public ExecOperationBuild() {
         pkg = "rife.bld.extension";
-        name = "ExecOperation";
+        name = "bld-exec";
         version = version(1, 0, 6, "SNAPSHOT");
 
         javaRelease = 17;
