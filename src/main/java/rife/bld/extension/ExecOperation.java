@@ -16,6 +16,7 @@
 
 package rife.bld.extension;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import rife.bld.BaseProject;
 import rife.bld.operations.AbstractOperation;
 import rife.bld.operations.exceptions.ExitStatusException;
@@ -25,7 +26,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,9 +40,50 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     private static final Logger LOGGER = Logger.getLogger(ExecOperation.class.getName());
     private final Collection<String> args_ = new ArrayList<>();
     private boolean failOnExit_ = true;
-    private BaseProject project_;
     private int timeout_ = 30;
     private File workDir_;
+
+    /**
+     * Executes the command.
+     */
+    @Override
+    @SuppressFBWarnings("COMMAND_INJECTION")
+    public void execute() throws Exception {
+        if (workDir_ == null || !workDir_.exists() || !workDir_.isDirectory()) {
+            if (LOGGER.isLoggable(Level.SEVERE) && !silent()) {
+                LOGGER.severe("A valid working directory must be specified.");
+            }
+            throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
+        } else {
+            if (LOGGER.isLoggable(Level.INFO) && !silent()) {
+                LOGGER.log(Level.INFO, "Working directory: {0}", workDir_.getAbsolutePath());
+            }
+            var pb = new ProcessBuilder();
+            pb.inheritIO();
+            pb.command(args_.stream().toList());
+            pb.directory(workDir_);
+
+            if (LOGGER.isLoggable(Level.INFO) && !silent()) {
+                LOGGER.info(String.join(" ", args_));
+            }
+
+            var proc = pb.start();
+            var err = proc.waitFor(timeout_, TimeUnit.SECONDS);
+
+            if (!err) {
+                proc.destroy();
+                if (LOGGER.isLoggable(Level.SEVERE) && !silent()) {
+                    LOGGER.severe("The command timed out.");
+                }
+                throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
+            } else if (proc.exitValue() != 0 && failOnExit_) {
+                if (LOGGER.isLoggable(Level.SEVERE) && !silent()) {
+                    LOGGER.log(Level.SEVERE, "The command exit value/status is: {0}", proc.exitValue());
+                }
+                ExitStatusException.throwOnFailure(proc.exitValue());
+            }
+        }
+    }
 
     /**
      * Configures the command and arguments to be executed.
@@ -66,10 +107,10 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      *
      * @return the command and arguments
      */
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public Collection<String> command() {
         return args_;
     }
-
 
     /**
      * Configures the command and arguments to be executed.
@@ -81,58 +122,6 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     public ExecOperation command(Collection<String> args) {
         args_.addAll(args);
         return this;
-    }
-
-    /**
-     * Executes the command.
-     */
-    @Override
-    public void execute() throws Exception {
-        if (project_ == null) {
-            if (LOGGER.isLoggable(Level.SEVERE) && !silent()) {
-                LOGGER.severe("A project must be specified.");
-            }
-            throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
-        } else {
-            final File workDir = Objects.requireNonNullElseGet(workDir_,
-                    () -> new File(project_.workDirectory().getAbsolutePath()));
-
-            if (LOGGER.isLoggable(Level.INFO) && !silent()) {
-                LOGGER.log(Level.INFO, "Working directory: {0}", workDir.getAbsolutePath());
-            }
-
-            if (workDir.isDirectory()) {
-                var pb = new ProcessBuilder();
-                pb.inheritIO();
-                pb.command(args_.stream().toList());
-                pb.directory(workDir);
-
-                if (LOGGER.isLoggable(Level.INFO) && !silent()) {
-                    LOGGER.info(String.join(" ", args_));
-                }
-
-                var proc = pb.start();
-                var err = proc.waitFor(timeout_, TimeUnit.SECONDS);
-
-                if (!err) {
-                    proc.destroy();
-                    if (LOGGER.isLoggable(Level.SEVERE) && !silent()) {
-                        LOGGER.severe("The command timed out.");
-                    }
-                    throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
-                } else if (proc.exitValue() != 0 && failOnExit_) {
-                    if (LOGGER.isLoggable(Level.SEVERE) && !silent()) {
-                        LOGGER.log(Level.SEVERE, "The command exit value/status is: {0}", proc.exitValue());
-                    }
-                    ExitStatusException.throwOnFailure(proc.exitValue());
-                }
-            } else {
-                if (LOGGER.isLoggable(Level.SEVERE) && !silent()) {
-                    LOGGER.log(Level.SEVERE, "Invalid working directory: {0}", workDir);
-                }
-                throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
-            }
-        }
     }
 
     /**
@@ -150,12 +139,14 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
 
     /**
      * Configures an Exec operation from a {@link BaseProject}.
+     * <p>
+     * The {@link #workDir() work directory} is automatically set to the project's working directory.
      *
      * @param project the project
      * @return this operation instance
      */
     public ExecOperation fromProject(BaseProject project) {
-        project_ = project;
+        workDir_ = project.workDirectory();
         return this;
     }
 
@@ -216,6 +207,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @param dir the directory path
      * @return this operation instance
      */
+    @SuppressFBWarnings("PATH_TRAVERSAL_IN")
     public ExecOperation workDir(String dir) {
         return workDir(new File(dir));
     }

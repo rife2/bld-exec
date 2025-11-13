@@ -1,9 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="EntryPointsManager">
     <pattern value="rife.bld.extension.ExecOperationBuild" method="jacoco" />
     <pattern value="rife.bld.extension.ExecOperationBuild" method="pmd" />
     <pattern value="rife.bld.extension.ExecOperationBuild" />
     <pattern value="rife.bld.extension.ExecOperationBuild" method="reporter" />
+    <pattern value="rife.bld.extension.ExecOperationBuild" method="spotbugs" />
   </component>
   <component name="PDMPlugin">
     <option name="customRuleSets">

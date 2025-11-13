@@ -26,8 +26,7 @@ import java.io.File;
 import java.util.List;
 
 import static rife.bld.dependencies.Repository.*;
-import static rife.bld.dependencies.Scope.compile;
-import static rife.bld.dependencies.Scope.test;
+import static rife.bld.dependencies.Scope.*;
 import static rife.bld.operations.JavadocOptions.DocLinkOption.NO_MISSING;
 
 public class ExecOperationBuild extends Project {
@@ -47,6 +46,9 @@ public class ExecOperationBuild extends Project {
         scope(compile)
                 .include(dependency("com.uwyn.rife2", "bld",
                         version(2, 3, 0)));
+        scope(provided)
+                .include(dependency("com.github.spotbugs", "spotbugs-annotations",
+                        version(4, 9, 8)));
         scope(test)
                 .include(dependency("com.uwyn.rife2", "bld-extensions-testing-helpers",
                         version(0, 9, 4)))
@@ -89,8 +91,24 @@ public class ExecOperationBuild extends Project {
                 .signPassphrase(property("sign.passphrase"));
     }
 
+    @Override
+    public void test() throws Exception {
+        var op = testOperation().fromProject(this);
+        op.testToolOptions().reportsDir(new File("build/test-results/test/"));
+        op.execute();
+    }
+
     public static void main(String[] args) {
         new ExecOperationBuild().start(args);
+    }
+
+    @BuildCommand(summary = "Runs PMD analysis")
+    public void pmd() throws Exception {
+        new PmdOperation()
+                .fromProject(this)
+                .failOnViolation(true)
+                .ruleSets("config/pmd.xml")
+                .execute();
     }
 
     @BuildCommand(summary = "Runs the JUnit reporter")
@@ -101,19 +119,11 @@ public class ExecOperationBuild extends Project {
                 .execute();
     }
 
-    @Override
-    public void test() throws Exception {
-        var op = testOperation().fromProject(this);
-        op.testToolOptions().reportsDir(new File("build/test-results/test/"));
-        op.execute();
-    }
-
-    @BuildCommand(summary = "Runs PMD analysis")
-    public void pmd() throws Exception {
-        new PmdOperation()
+    @BuildCommand(summary = "Runs SpotBugs on this project")
+    public void spotbugs() throws Exception {
+        new SpotBugsOperation()
                 .fromProject(this)
-                .failOnViolation(true)
-                .ruleSets("config/pmd.xml")
+                .home("/opt/spotbugs")
                 .execute();
     }
 }
