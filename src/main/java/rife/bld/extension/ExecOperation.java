@@ -38,7 +38,7 @@ import java.util.logging.Logger;
  */
 public class ExecOperation extends AbstractOperation<ExecOperation> {
     private static final Logger LOGGER = Logger.getLogger(ExecOperation.class.getName());
-    private final Collection<String> args_ = new ArrayList<>();
+    private final List<String> args_ = new ArrayList<>();
     private boolean failOnExit_ = true;
     private int timeout_ = 30;
     private File workDir_;
@@ -108,7 +108,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @return the command and arguments
      */
     @SuppressFBWarnings("EI_EXPOSE_REP")
-    public Collection<String> command() {
+    public List<String> command() {
         return args_;
     }
 
