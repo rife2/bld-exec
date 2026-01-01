@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,10 +39,62 @@ import java.util.logging.Logger;
  */
 public class ExecOperation extends AbstractOperation<ExecOperation> {
     private static final Logger LOGGER = Logger.getLogger(ExecOperation.class.getName());
+    private static final String OS_NAME = getOSName(); // cached
     private final List<String> args_ = new ArrayList<>();
     private boolean failOnExit_ = true;
     private int timeout_ = 30;
     private File workDir_;
+
+    /**
+     * Determines if the operating system is Linux.
+     *
+     * @return true if the operating system is Linux, false otherwise.
+     */
+    public static boolean isLinux() {
+        return isLinux(OS_NAME);
+    }
+
+    /**
+     * Determines if the current operating system is macOS.
+     *
+     * @return true if the OS is macOS, false otherwise.
+     */
+    public static boolean isMacOS() {
+        return isMacOS(OS_NAME);
+    }
+
+    /**
+     * Determines if the current operating system is Windows.
+     *
+     * @return true if the operating system is Windows, false otherwise.
+     */
+    public static boolean isWindows() {
+        return isWindows(OS_NAME);
+    }
+
+    private static String getOSName() {
+        var osName = System.getProperty("os.name");
+        return normalizeOSName(osName);
+    }
+
+    static String normalizeOSName(String osName) {
+        return osName != null ? osName.toLowerCase(Locale.ENGLISH) : "";
+    }
+
+    static boolean isLinux(String osName) {
+        var normalized = normalizeOSName(osName);
+        return normalized.contains("linux") || normalized.contains("unix");
+    }
+
+    static boolean isMacOS(String osName) {
+        var normalized = normalizeOSName(osName);
+        return normalized.contains("mac") || normalized.contains("darwin") || normalized.contains("osx");
+    }
+
+    static boolean isWindows(String osName) {
+        String normalized = normalizeOSName(osName);
+        return normalized.contains("windows") || normalized.startsWith("win");
+    }
 
     /**
      * Executes the command.
@@ -199,7 +252,6 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     public ExecOperation workDir(Path dir) {
         return workDir(dir.toFile());
     }
-
 
     /**
      * Configures the working directory.
