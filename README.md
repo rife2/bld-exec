@@ -64,5 +64,12 @@ public void startServer() throws Exception {
             .execute();
 }
 ```
+## Configuration Options
 
 Please check the [ExecOperation documentation](https://rife2.github.io/bld-exec/rife/bld/extension/ExecOperation.html#method-summary) for all available configuration options.
+
+## Project Example
+
+The [build file](https://github.com/rife2/graalvm-native-bld-example/blob/main/src/bld/java/com/example/GraalNativeBuild.java)
+of the _GraalVM Native Executable Example_ project uses the extension extensively.
+
