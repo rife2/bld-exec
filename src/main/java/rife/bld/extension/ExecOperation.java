@@ -1,5 +1,5 @@
 /*
- * Copyright 2023-2025 the original author or authors.
+ * Copyright 2023-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     }
 
     static boolean isWindows(String osName) {
-        String normalized = normalizeOSName(osName);
+        var normalized = normalizeOSName(osName);
         return normalized.contains("windows") || normalized.startsWith("win");
     }
 
