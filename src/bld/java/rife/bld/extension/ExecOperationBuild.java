@@ -33,7 +33,7 @@ public class ExecOperationBuild extends Project {
     public ExecOperationBuild() {
         pkg = "rife.bld.extension";
         name = "bld-exec";
-        version = version(1, 1, 0);
+        version = version(1, 2, 0, "SNAPSHOT");
 
         javaRelease = 17;
 
