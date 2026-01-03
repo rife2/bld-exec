@@ -28,6 +28,7 @@ import rife.bld.Project;
 import rife.bld.WebProject;
 import rife.bld.extension.testing.LoggingExtension;
 import rife.bld.extension.testing.TestLogHandler;
+import rife.bld.extension.tools.SystemUtils;
 import rife.bld.operations.exceptions.ExitStatusException;
 
 import java.io.File;
@@ -37,8 +38,7 @@ import java.util.logging.Logger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 @ExtendWith(LoggingExtension.class)
 class ExecOperationTest {
@@ -73,7 +73,7 @@ class ExecOperationTest {
     }
 
     private List<String> getPlatformSpecificCommand(List<String> windowsCommand, List<String> unixCommand) {
-        return ExecOperation.isWindows() ? windowsCommand : unixCommand;
+        return SystemUtils.isWindows() ? windowsCommand : unixCommand;
     }
 
     @Nested
@@ -237,6 +237,45 @@ class ExecOperationTest {
     }
 
     @Nested
+    @DisplayName("OS Detection Tests")
+    class OsDetectionTests {
+        @Test
+        void verifyIsAix() {
+            assertSame(SystemUtils.isAix(), ExecOperation.isAix());
+        }
+
+        @Test
+        void verifyIsFreeBsd() {
+            assertSame(SystemUtils.isFreeBsd(), ExecOperation.isFreeBsd());
+        }
+
+        @Test
+        void verifyIsLinux() {
+            assertSame(SystemUtils.isLinux(), ExecOperation.isLinux());
+        }
+
+        @Test
+        void verifyIsMacOS() {
+            assertSame(SystemUtils.isMacOS(), ExecOperation.isMacOS());
+        }
+
+        @Test
+        void verifyIsOpenVms() {
+            assertSame(SystemUtils.isOpenVms(), ExecOperation.isOpenVms());
+        }
+
+        @Test
+        void verifyIsSolaris() {
+            assertSame(SystemUtils.isSolaris(), ExecOperation.isSolaris());
+        }
+
+        @Test
+        void verifyIsWindows() {
+            assertSame(SystemUtils.isWindows(), ExecOperation.isWindows());
+        }
+    }
+
+    @Nested
     @DisplayName("Work Directory Tests")
     class WorkingDirTests {
         private final List<String> echoCommand = getPlatformSpecificCommand(WINDOWS_ECHO_COMMAND, UNIX_ECHO_COMMAND);
@@ -307,155 +346,6 @@ class ExecOperationTest {
             assertThatCode(op::execute)
                     .as("setting a string-based working directory should execute without failing")
                     .doesNotThrowAnyException();
-        }
-    }
-
-    @Nested
-    @DisplayName("OS Tests")
-    class OsTests {
-        @Nested
-        @DisplayName("OS Detection Tests")
-        class OsDetectionTests {
-            @Test
-            @EnabledOnOs(OS.LINUX)
-            void verifyIsLinux() {
-                assertTrue(ExecOperation.isLinux());
-                assertFalse(ExecOperation.isWindows());
-                assertFalse(ExecOperation.isMacOS());
-            }
-
-            @Test
-            @EnabledOnOs(OS.MAC)
-            void verifyIsMacOS() {
-                assertTrue(ExecOperation.isMacOS());
-                assertFalse(ExecOperation.isLinux());
-                assertFalse(ExecOperation.isWindows());
-            }
-
-            @Test
-            @EnabledOnOs(OS.WINDOWS)
-            void verifyIsWindows() {
-                assertTrue(ExecOperation.isWindows());
-                assertFalse(ExecOperation.isLinux());
-                assertFalse(ExecOperation.isMacOS());
-            }
-        }
-
-        @Nested
-        @DisplayName("Linux Detection Tests")
-        class LinuxDetectionTests {
-            @Test
-            void detectsLinux() {
-                assertTrue(ExecOperation.isLinux("Linux"));
-            }
-
-            @Test
-            void detectsUnix() {
-                assertTrue(ExecOperation.isLinux("Unix"));
-            }
-
-            @Test
-            void detectsLinuxCaseInsensitive() {
-                assertTrue(ExecOperation.isLinux("linux"));
-            }
-
-            @Test
-            void detectsUnixVariants() {
-                assertTrue(ExecOperation.isLinux("freebsd unix"));
-            }
-
-            @Test
-            void rejectsNonLinux() {
-                assertFalse(ExecOperation.isLinux("Windows 10"));
-                assertFalse(ExecOperation.isLinux("Mac OS X"));
-            }
-        }
-
-        @Nested
-        @DisplayName("MacOS Detection Tests")
-        class MacOSDetectionTests {
-            @Test
-            void detectsMacOSX() {
-                assertTrue(ExecOperation.isMacOS("Mac OS X"));
-            }
-
-            @Test
-            void detectsMacOS() {
-                assertTrue(ExecOperation.isMacOS("macOS"));
-            }
-
-            @Test
-            void detectsDarwin() {
-                assertTrue(ExecOperation.isMacOS("Darwin"));
-            }
-
-            @Test
-            void detectsMacCaseInsensitive() {
-                assertTrue(ExecOperation.isMacOS("MAC OS X"));
-                assertTrue(ExecOperation.isMacOS("MACOS"));
-            }
-
-            @Test
-            void rejectsNonMac() {
-                assertFalse(ExecOperation.isMacOS("Windows 10"));
-                assertFalse(ExecOperation.isMacOS("Linux"));
-            }
-        }
-
-        @Nested
-        @DisplayName("Windows Detection Tests")
-        class WindowsDetectionTests {
-            @Test
-            void detectsWindows() {
-                assertTrue(ExecOperation.isWindows("windows 10"));
-            }
-
-            @Test
-            void detectsWindows11() {
-                assertTrue(ExecOperation.isWindows("windows 11"));
-            }
-
-            @Test
-            void detectsWindowsServer() {
-                assertTrue(ExecOperation.isWindows("windows server 2022"));
-            }
-
-            @Test
-            void detectsWindowsCaseInsensitive() {
-                assertTrue(ExecOperation.isWindows("windows"));
-            }
-
-            @Test
-            void rejectsNonWindows() {
-                assertFalse(ExecOperation.isWindows("Mac OS X"));
-                assertFalse(ExecOperation.isWindows("Linux"));
-                assertFalse(ExecOperation.isWindows("darwin")); // "win" should not match "darwin"
-            }
-        }
-
-        @Nested
-        @DisplayName("Edge Cases Tests")
-        class EdgeCaseTests {
-            @Test
-            void handlesEmptyOsName() {
-                assertFalse(ExecOperation.isLinux(""));
-                assertFalse(ExecOperation.isMacOS(""));
-                assertFalse(ExecOperation.isWindows(""));
-            }
-
-            @Test
-            void handlesUnknownOS() {
-                assertFalse(ExecOperation.isLinux("someunknownos"));
-                assertFalse(ExecOperation.isMacOS("someunknownos"));
-                assertFalse(ExecOperation.isWindows("someunknownos"));
-            }
-
-            @Test
-            void handlesPartialMatches() {
-                assertFalse(ExecOperation.isWindows("darwin"));
-                assertFalse(ExecOperation.isMacOS("linux"));
-                assertFalse(ExecOperation.isLinux("windows"));
-            }
         }
     }
 }

@@ -44,6 +44,8 @@ public class ExecOperationBuild extends Project {
 
         var junit = version(6, 0, 1);
         scope(compile)
+                .include(dependency("com.uwyn.rife2", "bld-extensions-tools",
+                        version(0, 9, 0, "SNAPSHOT")))
                 .include(dependency("com.uwyn.rife2", "bld",
                         version(2, 3, 0)));
         scope(provided)
@@ -91,15 +93,15 @@ public class ExecOperationBuild extends Project {
                 .signPassphrase(property("sign.passphrase"));
     }
 
-    public static void main(String[] args) {
-        new ExecOperationBuild().start(args);
-    }
-
     @Override
     public void test() throws Exception {
         var op = testOperation().fromProject(this);
         op.testToolOptions().reportsDir(new File("build/test-results/test/"));
         op.execute();
+    }
+
+    public static void main(String[] args) {
+        new ExecOperationBuild().start(args);
     }
 
     @BuildCommand(summary = "Runs PMD analysis")
