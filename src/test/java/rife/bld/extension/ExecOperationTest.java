@@ -245,6 +245,11 @@ class ExecOperationTest {
         }
 
         @Test
+        void verifyIsCygwin() {
+            assertSame(SystemUtils.isCygwin(), ExecOperation.isCygwin());
+        }
+
+        @Test
         void verifyIsFreeBsd() {
             assertSame(SystemUtils.isFreeBsd(), ExecOperation.isFreeBsd());
         }
@@ -257,6 +262,11 @@ class ExecOperationTest {
         @Test
         void verifyIsMacOS() {
             assertSame(SystemUtils.isMacOS(), ExecOperation.isMacOS());
+        }
+
+        @Test
+        void verifyIsMingw() {
+            assertSame(SystemUtils.isMingw(), ExecOperation.isMingw());
         }
 
         @Test
