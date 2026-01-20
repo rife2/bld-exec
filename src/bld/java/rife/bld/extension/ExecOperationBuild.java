@@ -18,11 +18,11 @@ package rife.bld.extension;
 
 import rife.bld.BuildCommand;
 import rife.bld.Project;
+import rife.bld.extension.tools.IOUtils;
 import rife.bld.publish.PublishDeveloper;
 import rife.bld.publish.PublishLicense;
 import rife.bld.publish.PublishScm;
 
-import java.io.File;
 import java.util.List;
 
 import static rife.bld.dependencies.Repository.*;
@@ -30,6 +30,7 @@ import static rife.bld.dependencies.Scope.*;
 import static rife.bld.operations.JavadocOptions.DocLinkOption.NO_MISSING;
 
 public class ExecOperationBuild extends Project {
+
     public ExecOperationBuild() {
         pkg = "rife.bld.extension";
         name = "bld-exec";
@@ -96,7 +97,7 @@ public class ExecOperationBuild extends Project {
     @Override
     public void test() throws Exception {
         var op = testOperation().fromProject(this);
-        op.testToolOptions().reportsDir(new File("build/test-results/test/"));
+        op.testToolOptions().reportsDir(IOUtils.resolveFile(buildDirectory(), "test-results", "test"));
         op.execute();
     }
 
