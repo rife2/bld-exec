@@ -28,7 +28,7 @@ import rife.bld.Project;
 import rife.bld.WebProject;
 import rife.bld.extension.testing.LoggingExtension;
 import rife.bld.extension.testing.TestLogHandler;
-import rife.bld.extension.tools.SystemUtils;
+import rife.bld.extension.tools.SystemTools;
 import rife.bld.operations.exceptions.ExitStatusException;
 
 import java.io.File;
@@ -42,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 @ExtendWith(LoggingExtension.class)
 class ExecOperationTest {
+
     private static final String BAR = "bar";
     private static final String CAT_COMMAND = "cat";
     private static final String ECHO_COMMAND = "echo";
@@ -73,12 +74,13 @@ class ExecOperationTest {
     }
 
     private List<String> getPlatformSpecificCommand(List<String> windowsCommand, List<String> unixCommand) {
-        return SystemUtils.isWindows() ? windowsCommand : unixCommand;
+        return SystemTools.isWindows() ? windowsCommand : unixCommand;
     }
 
     @Nested
     @DisplayName("Command Tests")
     class CommandTests {
+
         @Test
         void command() {
             var execOperation = new ExecOperation()
@@ -184,6 +186,7 @@ class ExecOperationTest {
     @Nested
     @DisplayName("Exit Tests")
     class ExitTests {
+
         @Test
         void exitValue() {
             var catCommand = getPlatformSpecificCommand(WINDOWS_CAT_COMMAND, UNIX_CAT_COMMAND);
@@ -239,55 +242,57 @@ class ExecOperationTest {
     @Nested
     @DisplayName("OS Detection Tests")
     class OsDetectionTests {
+
         @Test
         void verifyIsAix() {
-            assertSame(SystemUtils.isAix(), ExecOperation.isAix());
+            assertSame(SystemTools.isAix(), ExecOperation.isAix());
         }
 
         @Test
         void verifyIsCygwin() {
-            assertSame(SystemUtils.isCygwin(), ExecOperation.isCygwin());
+            assertSame(SystemTools.isCygwin(), ExecOperation.isCygwin());
         }
 
         @Test
         void verifyIsFreeBsd() {
-            assertSame(SystemUtils.isFreeBsd(), ExecOperation.isFreeBsd());
+            assertSame(SystemTools.isFreeBsd(), ExecOperation.isFreeBsd());
         }
 
         @Test
         void verifyIsLinux() {
-            assertSame(SystemUtils.isLinux(), ExecOperation.isLinux());
+            assertSame(SystemTools.isLinux(), ExecOperation.isLinux());
         }
 
         @Test
         void verifyIsMacOS() {
-            assertSame(SystemUtils.isMacOS(), ExecOperation.isMacOS());
+            assertSame(SystemTools.isMacOS(), ExecOperation.isMacOS());
         }
 
         @Test
         void verifyIsMingw() {
-            assertSame(SystemUtils.isMingw(), ExecOperation.isMingw());
+            assertSame(SystemTools.isMingw(), ExecOperation.isMingw());
         }
 
         @Test
         void verifyIsOpenVms() {
-            assertSame(SystemUtils.isOpenVms(), ExecOperation.isOpenVms());
+            assertSame(SystemTools.isOpenVms(), ExecOperation.isOpenVms());
         }
 
         @Test
         void verifyIsSolaris() {
-            assertSame(SystemUtils.isSolaris(), ExecOperation.isSolaris());
+            assertSame(SystemTools.isSolaris(), ExecOperation.isSolaris());
         }
 
         @Test
         void verifyIsWindows() {
-            assertSame(SystemUtils.isWindows(), ExecOperation.isWindows());
+            assertSame(SystemTools.isWindows(), ExecOperation.isWindows());
         }
     }
 
     @Nested
     @DisplayName("Work Directory Tests")
     class WorkingDirTests {
+
         private final List<String> echoCommand = getPlatformSpecificCommand(WINDOWS_ECHO_COMMAND, UNIX_ECHO_COMMAND);
         private final ExecOperation op = createBasicExecOperation().command(echoCommand);
         private final File tmpDir = new File(System.getProperty("java.io.tmpdir"));

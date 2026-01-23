@@ -18,7 +18,7 @@ package rife.bld.extension;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import rife.bld.BaseProject;
-import rife.bld.extension.tools.SystemUtils;
+import rife.bld.extension.tools.SystemTools;
 import rife.bld.operations.AbstractOperation;
 import rife.bld.operations.exceptions.ExitStatusException;
 
@@ -38,6 +38,7 @@ import java.util.logging.Logger;
  * @since 1.0
  */
 public class ExecOperation extends AbstractOperation<ExecOperation> {
+
     private static final Logger LOGGER = Logger.getLogger(ExecOperation.class.getName());
     private final List<String> args_ = new ArrayList<>();
     private boolean failOnExit_ = true;
@@ -92,7 +93,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @return {@code true} if the operating system is identified as AIX, {@code false} otherwise
      */
     public static boolean isAix() {
-        return SystemUtils.isAix();
+        return SystemTools.isAix();
     }
 
     /**
@@ -101,7 +102,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @return {@code true} if the operating system is identified as Cygwin, {@code false} otherwise
      */
     public static boolean isCygwin() {
-        return SystemUtils.isCygwin();
+        return SystemTools.isCygwin();
     }
 
     /**
@@ -110,7 +111,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @return {@code true} if the operating system is FreeBSD, {@code false} otherwise
      */
     public static boolean isFreeBsd() {
-        return SystemUtils.isFreeBsd();
+        return SystemTools.isFreeBsd();
     }
 
     /**
@@ -119,7 +120,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @return {@code true} if the operating system is Linux, {@code false} otherwise
      */
     public static boolean isLinux() {
-        return SystemUtils.isLinux();
+        return SystemTools.isLinux();
     }
 
     /**
@@ -128,7 +129,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @return {@code true} if the OS is macOS, {@code false} otherwise
      */
     public static boolean isMacOS() {
-        return SystemUtils.isMacOS();
+        return SystemTools.isMacOS();
     }
 
     /**
@@ -137,7 +138,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @return {@code true} if the operating system is identified as MinGW, {@code false} otherwise
      */
     public static boolean isMingw() {
-        return SystemUtils.isMingw();
+        return SystemTools.isMingw();
     }
 
     /**
@@ -146,7 +147,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @return {@code true} if the operating system is OpenVMS, {@code false} otherwise
      */
     public static boolean isOpenVms() {
-        return SystemUtils.isOpenVms();
+        return SystemTools.isOpenVms();
     }
 
     /**
@@ -155,7 +156,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @return {@code true} if the operating system is Solaris, {@code false} otherwise
      */
     public static boolean isSolaris() {
-        return SystemUtils.isSolaris();
+        return SystemTools.isSolaris();
     }
 
     /**
@@ -164,7 +165,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @return {@code true} if the operating system is Windows, {@code false} otherwise
      */
     public static boolean isWindows() {
-        return SystemUtils.isWindows();
+        return SystemTools.isWindows();
     }
 
     /**
