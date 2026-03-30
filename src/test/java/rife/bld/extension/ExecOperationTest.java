@@ -161,8 +161,8 @@ class ExecOperationTest {
                     createBasicExecOperation()
                             .command(FOO)
                             .execute())
-                    .message()
-                    .startsWith("Cannot run program \"" + FOO + '"');
+                    .isInstanceOf(ExitStatusException.class);
+            assertThat(TEST_LOG_HANDLER.containsExactMessage("Failed to start command: foo"));
         }
 
         @Test
