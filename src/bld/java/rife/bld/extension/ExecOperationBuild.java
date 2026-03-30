@@ -34,14 +34,14 @@ public class ExecOperationBuild extends Project {
     public ExecOperationBuild() {
         pkg = "rife.bld.extension";
         name = "bld-exec";
-        version = version(1, 2, 0, "SNAPSHOT");
+        version = version(1, 2, 0);
 
         javaRelease = 17;
 
         downloadSources = true;
         autoDownloadPurge = true;
 
-        repositories = List.of(MAVEN_CENTRAL, CENTRAL_SNAPSHOTS, RIFE2_RELEASES, MAVEN_LOCAL);
+        repositories = List.of(MAVEN_CENTRAL, CENTRAL_SNAPSHOTS, RIFE2_RELEASES);
 
         var junit = version(6, 0, 3);
         scope(compile)
