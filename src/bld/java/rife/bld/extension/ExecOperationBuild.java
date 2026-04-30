@@ -34,7 +34,7 @@ public class ExecOperationBuild extends Project {
     public ExecOperationBuild() {
         pkg = "rife.bld.extension";
         name = "bld-exec";
-        version = version(1, 2, 0);
+        version = version(1, 3, 0);
 
         javaRelease = 17;
 
@@ -66,7 +66,8 @@ public class ExecOperationBuild extends Project {
                 .docLint(NO_MISSING)
                 .link("https://rife2.github.io/bld/")
                 .link("https://rife2.github.io/rife2/")
-                .link("https://rife2.github.io/bld-extensions-tools/");
+                .link("https://rife2.github.io/bld-extensions-tools/")
+                .link("https://findbugs.sourceforge.net/api/");
 
         publishOperation()
                 .repository(version.isSnapshot() ? repository("rife2-snapshot") : repository("rife2"))
@@ -98,6 +99,7 @@ public class ExecOperationBuild extends Project {
     @Override
     public void test() throws Exception {
         var op = testOperation().fromProject(this);
+        IOTools.isDirectory("src");
         op.testToolOptions().reportsDir(IOTools.resolveFile(buildDirectory(), "test-results", "test"));
         op.execute();
     }
