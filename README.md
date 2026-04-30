@@ -24,7 +24,8 @@ To execute a command at the command line, add the following to your build file:
 public void startServer() throws Exception {
     new ExecOperation()
             .fromProject(this)
-            .command("./start.sh", "--port", "8080")
+            .onWindows("cmd", "/c", "start.bat", "-p", "8080")
+            .onUnix("./start.sh", "--port", "8080")
             .execute();
 }
 ```
@@ -36,15 +37,10 @@ Use the `failOnExit` function to specify whether a command non-zero exit value (
 ```java
 @BuildCommand
 public void startServer() throws Exception {
-    final List<String> cmds;
-    if (ExecOperation.isWindows()) {
-        cmds = List.of("cmd", "/c", "stop.bat");
-    } else {
-        cmds = List.of("./stop.sh");
-    }
     new ExecOperation()
             .fromProject(this)
-            .command(cmds)
+            .onWindows("cmd", "/c", "stop.bat")
+            .onUnix("./stop.sh")
             .failOneExit(false)
             .execute();
 }
