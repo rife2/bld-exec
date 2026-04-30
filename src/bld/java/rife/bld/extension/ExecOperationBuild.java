@@ -46,7 +46,7 @@ public class ExecOperationBuild extends Project {
         var junit = version(6, 0, 3);
         scope(compile)
                 .include(dependency("com.uwyn.rife2", "bld-extensions-tools",
-                        version(1, 0, 1)))
+                        version(1, 2, 0)))
                 .include(dependency("com.uwyn.rife2", "bld",
                         version(2, 3, 1, "SNAPSHOT")));
         scope(provided)
@@ -65,7 +65,8 @@ public class ExecOperationBuild extends Project {
                 .author()
                 .docLint(NO_MISSING)
                 .link("https://rife2.github.io/bld/")
-                .link("https://rife2.github.io/rife2/");
+                .link("https://rife2.github.io/rife2/")
+                .link("https://rife2.github.io/bld-extensions-tools/");
 
         publishOperation()
                 .repository(version.isSnapshot() ? repository("rife2-snapshot") : repository("rife2"))

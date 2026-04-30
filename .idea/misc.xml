@@ -6,6 +6,10 @@
     <pattern value="rife.bld.extension.ExecOperationBuild" />
     <pattern value="rife.bld.extension.ExecOperationBuild" method="reporter" />
     <pattern value="rife.bld.extension.ExecOperationBuild" method="spotbugs" />
+    <pattern value="rife.bld.extension.ExecOperation" />
+    <pattern value="rife.bld.extension.ExecOperation" method="isLinux" />
+    <pattern value="rife.bld.extension.ExecOperation" method="isMacOS" />
+    <pattern value="rife.bld.extension.ExecOperation" method="isUnix" />
   </component>
   <component name="PDMPlugin">
     <option name="customRuleSets">

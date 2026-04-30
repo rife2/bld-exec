@@ -98,6 +98,7 @@
 
     <!-- MULTITHREADING -->
     <rule ref="category/java/multithreading.xml">
+        <exclude name="UseConcurrentHashMap"/>
     </rule>
 
     <!-- PERFORMANCE -->
