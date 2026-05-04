@@ -311,14 +311,14 @@ class ExecOperationTest {
     class FluentOsCommandTests {
 
         @Test
-        void fluentChainLastWins() {
+        void fluentChain() {
             var op = createBasicExecOperation();
+            op.onWindows("firstWin").onWindows("secondWin");
+            op.onUnix("first").onUnix("second");
             if (ExecOperation.isWindows()) {
-                op.onWindows("first").onWindows("second");
-                assertThat(op.command()).containsExactly("second");
+                assertThat(op.command()).containsExactlyInAnyOrder("firstWin", "secondWin");
             } else {
-                op.onUnix("first").onUnix("second");
-                assertThat(op.command()).containsExactly("second");
+                assertThat(op.command()).containsExactlyInAnyOrder("first", "second");
             }
         }
 

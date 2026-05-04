@@ -185,7 +185,6 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      */
     public ExecOperation command(@NonNull String... args) {
         ObjectTools.requireAllNotEmpty(args, COMMAND_NOT_VALID);
-        args_.clear();
         args_.addAll(List.of(args));
         return this;
     }
@@ -220,7 +219,6 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      */
     public final ExecOperation command(@NonNull Collection<String> args) {
         ObjectTools.requireAllNotEmpty(args, COMMAND_NOT_VALID);
-        args_.clear();
         args_.addAll(args);
         return this;
     }
