@@ -41,6 +41,7 @@ import java.util.logging.Logger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 @ExtendWith(LoggingExtension.class)
@@ -48,18 +49,12 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 class ExecOperationTest {
 
     private static final String BAR = "bar";
-    private static final String CAT_COMMAND = "cat";
-    private static final String ECHO_COMMAND = "echo";
     private static final String FOO = "foo";
 
-    private static final List<String> UNIX_CAT_COMMAND = List.of(CAT_COMMAND, FOO);
-    private static final List<String> UNIX_ECHO_COMMAND = List.of(ECHO_COMMAND, FOO);
-    private static final List<String> UNIX_SLEEP_COMMAND = List.of("yes");
-
-    private static final List<String> WINDOWS_CAT_COMMAND = List.of("cmd", "/c", "type", FOO);
-    private static final List<String> WINDOWS_ECHO_COMMAND = List.of("cmd", "/c", ECHO_COMMAND, FOO);
     @SuppressWarnings("PMD.AvoidUsingHardCodedIP")
-    private static final List<String> WINDOWS_SLEEP_COMMAND = List.of("cmd", "/c", "ping", "-t", "127.0.0.1");
+    private static final List<String> WINDOWS_SLEEP_COMMAND =
+            List.of("cmd", "/c", "ping", "-n", "12", "127.0.0.1", ">", "nul");
+    private static final List<String> UNIX_SLEEP_COMMAND = List.of("sleep", "5");
 
     @SuppressWarnings("LoggerInitializedWithForeignClass")
     private static final Logger logger = Logger.getLogger(ExecOperation.class.getName());
@@ -74,10 +69,6 @@ class ExecOperationTest {
 
     private ExecOperation createBasicExecOperation() {
         return new ExecOperation().fromProject(new BaseProject());
-    }
-
-    private List<String> getPlatformSpecificCommand(List<String> windowsCommand, List<String> unixCommand) {
-        return SystemTools.isWindows() ? windowsCommand : unixCommand;
     }
 
     @Nested
@@ -101,10 +92,10 @@ class ExecOperationTest {
 
         @Test
         void commandTimeout() {
-            var sleepCommand = getPlatformSpecificCommand(WINDOWS_SLEEP_COMMAND, UNIX_SLEEP_COMMAND);
             var execOperation = createBasicExecOperation()
-                    .timeout(2)
-                    .command(sleepCommand);
+                    .onWindows(WINDOWS_SLEEP_COMMAND)
+                    .onUnix(UNIX_SLEEP_COMMAND)
+                    .timeout(2);
 
             assertThat(execOperation.timeout()).as("timeout should be 2 seconds").isEqualTo(2);
             assertThatCode(execOperation::execute).as("should fail execution due to timeout")
@@ -113,11 +104,11 @@ class ExecOperationTest {
 
         @Test
         void commandTimeoutWithSilent() {
-            var sleepCommand = getPlatformSpecificCommand(WINDOWS_SLEEP_COMMAND, UNIX_SLEEP_COMMAND);
             var execOperation = createBasicExecOperation()
                     .timeout(1)
                     .silent(true)
-                    .command(sleepCommand);
+                    .onWindows(WINDOWS_SLEEP_COMMAND)
+                    .onUnix(UNIX_SLEEP_COMMAND);
 
             assertThatCode(execOperation::execute).as("should fail execution due to timeout")
                     .isInstanceOf(ExitStatusException.class);
@@ -127,10 +118,10 @@ class ExecOperationTest {
         @Test
         void commandTimeoutWithoutLogging() {
             logger.setLevel(Level.OFF);
-            var sleepCommand = getPlatformSpecificCommand(WINDOWS_SLEEP_COMMAND, UNIX_SLEEP_COMMAND);
             var execOperation = createBasicExecOperation()
                     .timeout(1)
-                    .command(sleepCommand);
+                    .onWindows(WINDOWS_SLEEP_COMMAND)
+                    .onUnix(UNIX_SLEEP_COMMAND);
 
             assertThatCode(execOperation::execute).as("should fail execution due to timeout")
                     .isInstanceOf(ExitStatusException.class);
@@ -139,7 +130,9 @@ class ExecOperationTest {
 
         @Test
         void executeWithoutProject() {
-            var op = new ExecOperation().command(ECHO_COMMAND, FOO);
+            var op = new ExecOperation()
+                    .onWindows("cmd", "/c", "echo", FOO)
+                    .onUnix("echo", FOO);
 
             assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
         }
@@ -147,21 +140,22 @@ class ExecOperationTest {
         @Test
         void executeWithoutProjectNoLogging() {
             logger.setLevel(Level.OFF);
-            var op = new ExecOperation().command(ECHO_COMMAND, FOO);
+            var op = new ExecOperation()
+                    .onWindows("cmd", "/c", "echo", FOO)
+                    .onUnix("echo", FOO);
 
             assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
-
             assertThat(testLogHandler.isEmpty()).isTrue();
         }
 
         @Test
-        void executeWithoutProjectWIthSilent() {
+        void executeWithoutProjectWithSilent() {
             var op = new ExecOperation()
-                    .command(ECHO_COMMAND, FOO)
+                    .onWindows("cmd", "/c", "echo", FOO)
+                    .onUnix("echo", FOO)
                     .silent(true);
 
             assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
-
             assertThat(testLogHandler.isEmpty()).isTrue();
         }
 
@@ -195,6 +189,140 @@ class ExecOperationTest {
     }
 
     @Nested
+    @DisplayName("Coverage Edge Cases")
+    class CoverageEdgeCases {
+
+        @Test
+        void commandListIsMutable() {
+            var op = createBasicExecOperation().command("git");
+            op.command().add("status");
+            assertThat(op.command()).containsExactly("git", "status");
+        }
+
+        @Test
+        void commandNullElementThrows() {
+            assertThatThrownBy(() -> createBasicExecOperation().command("echo", null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("command values must not be null or empty");
+        }
+
+        @Test
+        void envMapIsMutable() {
+            var op = createBasicExecOperation().env("FOO", "bar");
+            op.env().put("BAZ", "qux");
+            assertThat(op.env()).containsEntry("BAZ", "qux");
+        }
+
+        @Test
+        @SuppressWarnings("DataFlowIssue")
+        void envNullKeyThrows() {
+            assertThatThrownBy(() -> createBasicExecOperation().env(null, "value"))
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        @SuppressWarnings("DataFlowIssue")
+        void envNullValueThrows() {
+            assertThatThrownBy(() -> createBasicExecOperation().env("KEY", null))
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        void failOnExitFalseIgnoresNonZero() {
+            var op = createBasicExecOperation()
+                    .onWindows("cmd", "/c", "exit", "1")
+                    .onUnix("sh", "-c", "exit 1")
+                    .failOnExit(false)
+                    .inheritIO(false);
+
+            assertThatCode(op::execute).doesNotThrowAnyException();
+        }
+
+        @Test
+        void fromProjectSetsWorkDir() {
+            var project = new BaseProject();
+            var op = new ExecOperation().fromProject(project);
+            assertThat(op.workDir()).isEqualTo(project.workDirectory());
+        }
+
+        @Test
+        void isInheritIOGetter() {
+            var op = createBasicExecOperation();
+            assertThat(op.isInheritIO()).isTrue(); // default
+            op.inheritIO(false);
+            assertThat(op.isInheritIO()).isFalse();
+        }
+
+        @Test
+        @EnabledOnOs(OS.WINDOWS)
+        void onLinuxDoesNothingOnWindows() {
+            var op = createBasicExecOperation().onLinux("should", "not", "add");
+            assertThat(op.command()).isEmpty();
+        }
+
+        @Test
+        @EnabledOnOs(OS.LINUX)
+        void onMacOSDoesNothingOnLinux() {
+            var op = createBasicExecOperation().onMacOS("should", "not", "add");
+            assertThat(op.command()).isEmpty();
+        }
+
+        @Test
+        @EnabledOnOs(OS.WINDOWS)
+        void onMacOSDoesNothingOnWindows() {
+            var op = createBasicExecOperation().onMacOS("should", "not", "add");
+            assertThat(op.command()).isEmpty();
+        }
+
+        @Test
+        @EnabledOnOs(OS.LINUX)
+        void onWindowsDoesNothingOnLinux() {
+            var op = createBasicExecOperation().onWindows("should", "not", "add");
+            assertThat(op.command()).isEmpty();
+        }
+
+        @Test
+        void osDetectionDelegatesToSystemTools() {
+            assertThat(ExecOperation.isWindows()).isEqualTo(SystemTools.isWindows());
+            assertThat(ExecOperation.isLinux()).isEqualTo(SystemTools.isLinux());
+            assertThat(ExecOperation.isMacOS()).isEqualTo(SystemTools.isMacOS());
+            assertThat(ExecOperation.isFreeBsd()).isEqualTo(SystemTools.isFreeBsd());
+            assertThat(ExecOperation.isSolaris()).isEqualTo(SystemTools.isSolaris());
+            assertThat(ExecOperation.isAix()).isEqualTo(SystemTools.isAix());
+            assertThat(ExecOperation.isOpenVms()).isEqualTo(SystemTools.isOpenVms());
+            assertThat(ExecOperation.isCygwin()).isEqualTo(SystemTools.isCygwin());
+            assertThat(ExecOperation.isMingw()).isEqualTo(SystemTools.isMinGw());
+        }
+
+        @Test
+        void timeoutNegativeThrows() {
+            assertThatThrownBy(() -> createBasicExecOperation().timeout(-5))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        void timeoutZeroThrows() {
+            assertThatThrownBy(() -> createBasicExecOperation().timeout(0))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("timeout must be > 0");
+        }
+
+        @Test
+        @SuppressWarnings("DataFlowIssue")
+        void workDirNullThrows() {
+            assertThatThrownBy(() -> createBasicExecOperation().workDir((File) null))
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        void workDirEmptyStringThrows() {
+            assertThatThrownBy(() -> createBasicExecOperation().workDir(""))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("directory must not be null or empty");
+        }
+    }
+
+    @Nested
     @DisplayName("Environment Tests")
     class EnvironmentTests {
 
@@ -224,7 +352,8 @@ class ExecOperationTest {
         void envPassedToProcess() {
             var op = createBasicExecOperation()
                     .command("sh", "-c", "echo $TEST_VAR")
-                    .env("TEST_VAR", "hello_env");
+                    .env("TEST_VAR", "hello_env")
+                    .inheritIO(false);
 
             assertThatCode(op::execute).doesNotThrowAnyException();
             testLogHandler.printLogMessages();
@@ -236,7 +365,8 @@ class ExecOperationTest {
         void envPassedToProcessWindows() {
             var op = createBasicExecOperation()
                     .command("cmd", "/c", "echo %TEST_VAR%")
-                    .env("TEST_VAR", "hello_env");
+                    .env("TEST_VAR", "hello_env")
+                    .inheritIO(false);
 
             assertThatCode(op::execute).doesNotThrowAnyException();
             testLogHandler.printLogMessages();
@@ -256,48 +386,47 @@ class ExecOperationTest {
 
         @Test
         void exitValue() {
-            var catCommand = getPlatformSpecificCommand(WINDOWS_CAT_COMMAND, UNIX_CAT_COMMAND);
             assertThatCode(() ->
                     createBasicExecOperation()
-                            .command(catCommand)
+                            .onWindows("cmd", "/c", "type", FOO)
+                            .onUnix("cat", FOO)
                             .execute())
                     .isInstanceOf(ExitStatusException.class);
         }
 
         @Test
         void failOnExitConfiguration() {
-            var catCommand = getPlatformSpecificCommand(WINDOWS_CAT_COMMAND, UNIX_CAT_COMMAND);
             var execOperation = createBasicExecOperation()
-                    .command(catCommand)
+                    .onWindows("cmd", "/c", "type", FOO)
+                    .onUnix("cat", FOO)
                     .failOnExit(false);
 
-            assertThat(execOperation.isFailOnExit()).as("fail on exit should be false by default").isFalse();
+            assertThat(execOperation.isFailOnExit()).isFalse();
             assertThatCode(execOperation::execute)
                     .as("should execute without failing")
                     .doesNotThrowAnyException();
 
             execOperation.failOnExit(true);
-            assertThat(execOperation.isFailOnExit()).as("fail on exit should be true").isTrue();
+            assertThat(execOperation.isFailOnExit()).isTrue();
         }
 
         @Test
         void failOnExitNoLogging() {
             logger.setLevel(Level.OFF);
-            var catCommand = getPlatformSpecificCommand(WINDOWS_CAT_COMMAND, UNIX_CAT_COMMAND);
             var execOperation = createBasicExecOperation()
-                    .command(catCommand)
+                    .onWindows("cmd", "/c", "type", FOO)
+                    .onUnix("cat", FOO)
                     .failOnExit(true);
 
             assertThatCode(execOperation::execute).isInstanceOf(ExitStatusException.class);
-
             assertThat(testLogHandler.isEmpty()).isTrue();
         }
 
         @Test
         void failOnExitWithSilent() {
-            var catCommand = getPlatformSpecificCommand(WINDOWS_CAT_COMMAND, UNIX_CAT_COMMAND);
             var execOperation = createBasicExecOperation()
-                    .command(catCommand)
+                    .onWindows("cmd", "/c", "type", FOO)
+                    .onUnix("cat", FOO)
                     .silent(true)
                     .failOnExit(true);
 
@@ -435,14 +564,24 @@ class ExecOperationTest {
 
         @Test
         void inheritIOFalseCapturesOutput() {
-            var echoCommand = getPlatformSpecificCommand(WINDOWS_ECHO_COMMAND, UNIX_ECHO_COMMAND);
             var op = createBasicExecOperation()
-                    .command(echoCommand)
+                    .onWindows("cmd", "/c", "echo", FOO)
+                    .onUnix("echo", FOO)
                     .inheritIO(false);
 
             assertThatCode(op::execute).doesNotThrowAnyException();
             testLogHandler.printLogMessages();
             assertThat(testLogHandler.containsMessage(FOO)).isTrue();
+        }
+
+        @Test
+        void inheritIOTrueDoesNotCapture() {
+            var op = createBasicExecOperation()
+                    .onWindows("cmd", "/c", "echo", FOO)
+                    .onUnix("echo", FOO)
+                    .inheritIO(true);
+
+            assertThatCode(op::execute).doesNotThrowAnyException();
         }
     }
 
@@ -500,15 +639,17 @@ class ExecOperationTest {
     @DisplayName("Work Directory Tests")
     class WorkingDirTests {
 
-        private final List<String> echoCommand = getPlatformSpecificCommand(WINDOWS_ECHO_COMMAND, UNIX_ECHO_COMMAND);
-        private final ExecOperation op = createBasicExecOperation().command(echoCommand);
+        private final ExecOperation op = createBasicExecOperation()
+                .onWindows("cmd", "/c", "echo", FOO)
+                .onUnix("echo", FOO);
         private final File tmpDir = new File(System.getProperty("java.io.tmpdir"));
 
         @Test
         void invalidWorkDir() {
             assertThatCode(() ->
                     createBasicExecOperation()
-                            .command(ECHO_COMMAND)
+                            .onWindows("cmd", "/c", "echo", FOO)
+                            .onUnix("echo", FOO)
                             .workDir(FOO)
                             .execute())
                     .isInstanceOf(ExitStatusException.class);
@@ -519,7 +660,8 @@ class ExecOperationTest {
             logger.setLevel(Level.OFF);
             assertThatCode(() ->
                     createBasicExecOperation()
-                            .command(ECHO_COMMAND)
+                            .onWindows("cmd", "/c", "echo", FOO)
+                            .onUnix("echo", FOO)
                             .workDir(FOO)
                             .execute())
                     .isInstanceOf(ExitStatusException.class);
@@ -531,7 +673,8 @@ class ExecOperationTest {
         void invalidWorkDirWithSilent() {
             assertThatCode(() ->
                     createBasicExecOperation()
-                            .command(ECHO_COMMAND)
+                            .onWindows("cmd", "/c", "echo", FOO)
+                            .onUnix("echo", FOO)
                             .workDir(FOO)
                             .silent(true)
                             .execute())
@@ -552,7 +695,8 @@ class ExecOperationTest {
         @Test
         void workDirAsPath() {
             var op = createBasicExecOperation()
-                    .command(echoCommand)
+                    .onWindows("cmd", "/c", "echo", FOO)
+                    .onUnix("echo", FOO)
                     .workDir(tmpDir.toPath());
             assertThat(op.workDir()).as("Path-based working directory").isEqualTo(tmpDir);
             assertThatCode(op::execute)

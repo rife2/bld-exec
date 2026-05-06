@@ -43,12 +43,12 @@ import java.util.logging.Logger;
 @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "intentional and documented")
 public class ExecOperation extends AbstractOperation<ExecOperation> {
 
-    public static final String COMMAND_NOT_VALID = "command values must not be null or empty";
+    private static final String COMMAND_NOT_VALID = "command values must not be null or empty";
     private static final Logger logger = Logger.getLogger(ExecOperation.class.getName());
     private final List<String> args_ = new ArrayList<>();
     private final Map<String, String> env_ = new HashMap<>();
     private boolean failOnExit_ = true;
-    private boolean inheritIO_;
+    private boolean inheritIO_ = true;
     private int timeout_ = 30;
     private File workDir_;
 
@@ -308,7 +308,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * When {@code false}, stdout and stderr are merged and captured through the logger. This makes
      * output testable and keeps it in the build log, but breaks interactive prompts and ANSI formatting.
      * <p>
-     * Default is {@code FALSE}
+     * Default is {@code TRUE}
      *
      * @param inheritIO {@code true} to inherit I/O, {@code false} to capture output
      * @return this operation instance
@@ -330,7 +330,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     /**
      * Returns whether the child process inherits the I/O streams of the current JVM.
      *
-     * @return {@code true} if I/O is inherited, {@code false} if output is captured
+     * @return {@code true} if I/O is inherited (default), {@code false} if output is captured
      * @see #inheritIO(boolean)
      */
     public boolean isInheritIO() {
@@ -472,8 +472,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @see #onUnix(String...)
      * @see #isWindows() static method for complex conditional logic
      */
-    public ExecOperation onWindows
-    (@NonNull String... args) {
+    public ExecOperation onWindows(@NonNull String... args) {
         ObjectTools.requireAllNotEmpty(args, COMMAND_NOT_VALID);
         if (SystemTools.isWindows()) {
             return command(args);
@@ -585,6 +584,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
             try {
                 outputThread.join(1000);
             } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
             }
         }
     }
@@ -610,6 +610,8 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
             pb.inheritIO();
         } else {
             pb.redirectErrorStream(true);
+            var devNull = SystemTools.isWindows() ? "NUL" : "/dev/null";
+            pb.redirectInput(ProcessBuilder.Redirect.from(new File(devNull)));
         }
         return pb;
     }
@@ -642,13 +644,13 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
         try (var reader = new BufferedReader(
                 new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
-            while ((line = reader.readLine()) != null) {
+            while (!Thread.currentThread().isInterrupted() && (line = reader.readLine()) != null) {
                 if (logInfo) {
                     logger.info(line);
                 }
             }
         } catch (IOException e) {
-            if (logSevere && proc.isAlive()) {
+            if (logSevere && proc.isAlive() && !Thread.currentThread().isInterrupted()) {
                 logger.log(Level.SEVERE, "Failed to read command output.", e);
             }
         }
@@ -688,16 +690,19 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
         final var logSevere = logger.isLoggable(Level.SEVERE) && !silent();
 
         try {
-            boolean finished = proc.waitFor(timeout_, TimeUnit.SECONDS);
-            if (!finished) {
+            if (!proc.waitFor(timeout_, TimeUnit.SECONDS)) {
                 proc.destroyForcibly();
-                proc.waitFor(5, TimeUnit.SECONDS);
-                if (logSevere) {
+                if (!proc.waitFor(5, TimeUnit.SECONDS) && proc.isAlive()) {
+                    if (logSevere) {
+                        logger.severe("Process could not be killed after timeout.");
+                    }
+                } else if (logSevere) {
                     logger.severe("The command timed out after " + timeout_ + " seconds.");
                 }
                 throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
             }
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             if (logSevere) {
                 logger.log(Level.SEVERE, "The command was interrupted.", e);
             }
