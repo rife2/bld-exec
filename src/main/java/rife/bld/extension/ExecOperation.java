@@ -21,15 +21,16 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import rife.bld.BaseProject;
 import rife.bld.extension.tools.IOTools;
 import rife.bld.extension.tools.ObjectTools;
+import rife.bld.extension.tools.ProcessExecutor;
 import rife.bld.extension.tools.SystemTools;
 import rife.bld.operations.AbstractOperation;
 import rife.bld.operations.exceptions.ExitStatusException;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,42 +40,55 @@ import java.util.logging.Logger;
  * @author <a href="https://erik.thauvin.net/">Erik C. Thauvin</a>
  * @since 1.0
  */
-@SuppressWarnings("PMD.DoNotUseThreads")
 @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "intentional and documented")
 public class ExecOperation extends AbstractOperation<ExecOperation> {
 
     private static final String COMMAND_NOT_VALID = "command values must not be null or empty";
     private static final Logger logger = Logger.getLogger(ExecOperation.class.getName());
+    private static final Consumer<String> DEFAULT_OUTPUT_CONSUMER = logger::info;
     private final List<String> args_ = new ArrayList<>();
     private final Map<String, String> env_ = new HashMap<>();
     private boolean failOnExit_ = true;
     private boolean inheritIO_ = true;
-    private int timeout_ = 30;
+    @NonNull
+    private Consumer<String> outputConsumer_ = DEFAULT_OUTPUT_CONSUMER;
+    private int timeout_ = ProcessExecutor.DEFAULT_TIMEOUT_SECONDS;
     private File workDir_;
 
     @Override
-    @SuppressWarnings({"PMD.CloseResource", "PMD.PreserveStackTrace"})
+    @SuppressWarnings({"PMD.PreserveStackTrace"})
     @SuppressFBWarnings("LEST_LOST_EXCEPTION_STACK_TRACE")
     public void execute() throws Exception {
         validatePreconditions();
         logExecutionStart();
 
-        var pb = createProcessBuilder();
-        Process proc = null;
-        Thread outputThread = null;
-
         try {
-            proc = pb.start();
-            outputThread = startOutputReader(proc);
-            waitForCompletion(proc);
-            handleExitCode(proc);
-        } catch (IOException e) {
+            var executor = new ProcessExecutor()
+                    .command(args_)
+                    .workDir(workDir_)
+                    .timeout(timeout_)
+                    .inheritIO(inheritIO_);
+
+            if (!env_.isEmpty()) {
+                executor.env(env_);
+            }
+
+            if (!inheritIO_) {
+                executor.outputConsumer(outputConsumer_);
+            }
+
+            var result = executor.execute();
+            handleExitCode(result.exitCode());
+
+            if (result.timedOut() && logger.isLoggable(Level.SEVERE) && !silent()) {
+                logger.severe("The command timed out after " + timeout_ + " seconds.");
+                throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
+            }
+        } catch (IOException | InterruptedException e) {
             if (logger.isLoggable(Level.SEVERE) && !silent()) {
                 logger.log(Level.SEVERE, "Failed to execute command.", e);
             }
             throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
-        } finally {
-            cleanup(proc, outputThread);
         }
     }
 
@@ -457,8 +471,8 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * <pre>{@code
      * new ExecOperation()
      *     .fromProject(this)
-     *     .isWindows("cmd", "/c", "build.bat")
-     *     .isUnix("./build.sh")
+     *     .onWindows("cmd", "/c", "build.bat")
+     *     .onUnix("./build.sh")
      *     .execute();
      * }</pre>
      * <p>
@@ -495,6 +509,21 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
         if (SystemTools.isWindows()) {
             return command(args);
         }
+        return this;
+    }
+
+    /**
+     * Sets a consumer to receive output lines when not inheriting I/O.
+     * <p>
+     * Only called when {@link #isInheritIO()} is {@code false}. Default logs at INFO level.
+     *
+     * @param outputConsumer the output consumer, must not be null
+     * @return this operation instance
+     * @throws NullPointerException if outputConsumer is null
+     */
+    public ExecOperation outputConsumer(@NonNull Consumer<String> outputConsumer) {
+        Objects.requireNonNull(outputConsumer, "outputConsumer must not be null");
+        outputConsumer_ = outputConsumer;
         return this;
     }
 
@@ -570,54 +599,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
         return workDir_;
     }
 
-    private void cleanup(Process proc, Thread outputThread) {
-        if (proc != null) {
-            if (proc.isAlive()) {
-                proc.destroyForcibly();
-            }
-            closeQuietly(proc.getInputStream());
-            closeQuietly(proc.getErrorStream());
-            closeQuietly(proc.getOutputStream());
-        }
-        if (outputThread != null) {
-            outputThread.interrupt();
-            try {
-                outputThread.join(1000);
-            } catch (InterruptedException ignored) {
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
-
-    private void closeQuietly(Closeable closeable) {
-        try {
-            closeable.close();
-        } catch (IOException ignored) {
-        }
-    }
-
-    @SuppressFBWarnings("COMMAND_INJECTION")
-    private ProcessBuilder createProcessBuilder() {
-        var pb = new ProcessBuilder();
-        pb.command(args_);
-        pb.directory(workDir_);
-
-        if (!env_.isEmpty()) {
-            pb.environment().putAll(env_);
-        }
-
-        if (inheritIO_) {
-            pb.inheritIO();
-        } else {
-            pb.redirectErrorStream(true);
-            var devNull = SystemTools.isWindows() ? "NUL" : "/dev/null";
-            pb.redirectInput(ProcessBuilder.Redirect.from(new File(devNull)));
-        }
-        return pb;
-    }
-
-    private void handleExitCode(Process proc) throws ExitStatusException {
-        int exitCode = proc.exitValue();
+    private void handleExitCode(int exitCode) throws ExitStatusException {
         if (exitCode != 0 && failOnExit_) {
             if (logger.isLoggable(Level.SEVERE) && !silent()) {
                 logger.log(Level.SEVERE, "The command exit value/status is: " + exitCode);
@@ -628,43 +610,12 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
 
     private void logExecutionStart() {
         if (logger.isLoggable(Level.INFO) && !silent()) {
-            logger.log(Level.INFO, "Working directory: " +  workDir_.getAbsolutePath());
+            logger.log(Level.INFO, "Working directory: " + workDir_.getAbsolutePath());
             if (!env_.isEmpty()) {
                 logger.log(Level.INFO, "Environment: " + env_);
             }
             logger.info(String.join(" ", args_));
         }
-    }
-
-    @SuppressFBWarnings("CRLF_INJECTION_LOGS")
-    private void readProcessOutput(Process proc) {
-        final var logInfo = logger.isLoggable(Level.INFO) && !silent();
-        final var logSevere = logger.isLoggable(Level.SEVERE) && !silent();
-
-        try (var reader = new BufferedReader(
-                new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            while (!Thread.currentThread().isInterrupted() && (line = reader.readLine()) != null) {
-                if (logInfo) {
-                    logger.info(line);
-                }
-            }
-        } catch (IOException e) {
-            if (logSevere && proc.isAlive() && !Thread.currentThread().isInterrupted()) {
-                logger.log(Level.SEVERE, "Failed to read command output.", e);
-            }
-        }
-    }
-
-    private Thread startOutputReader(Process proc) {
-        if (inheritIO_) {
-            return null;
-        }
-
-        var thread = new Thread(() -> readProcessOutput(proc));
-        thread.setDaemon(true);
-        thread.start();
-        return thread;
     }
 
     private void validatePreconditions() throws ExitStatusException {
@@ -682,29 +633,9 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
             }
             throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
         }
-    }
-
-    @SuppressWarnings("PMD.PreserveStackTrace")
-    @SuppressFBWarnings("LEST_LOST_EXCEPTION_STACK_TRACE")
-    private void waitForCompletion(Process proc) throws ExitStatusException {
-        final var logSevere = logger.isLoggable(Level.SEVERE) && !silent();
-
-        try {
-            if (!proc.waitFor(timeout_, TimeUnit.SECONDS)) {
-                proc.destroyForcibly();
-                if (!proc.waitFor(5, TimeUnit.SECONDS) && proc.isAlive()) {
-                    if (logSevere) {
-                        logger.severe("Process could not be killed after timeout.");
-                    }
-                } else if (logSevere) {
-                    logger.severe("The command timed out after " + timeout_ + " seconds.");
-                }
-                throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        if (inheritIO_ && outputConsumer_ != DEFAULT_OUTPUT_CONSUMER) {
             if (logSevere) {
-                logger.log(Level.SEVERE, "The command was interrupted.", e);
+                logger.severe("Cannot use custom outputConsumer with inheritIO(true).");
             }
             throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
         }

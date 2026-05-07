@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 /**
  * Provides a <a href="https://rife2.com/">bld</a> extension to perform command line execution.
  *

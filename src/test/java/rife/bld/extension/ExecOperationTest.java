@@ -32,10 +32,8 @@ import rife.bld.extension.tools.SystemTools;
 import rife.bld.operations.exceptions.ExitStatusException;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -50,12 +48,10 @@ class ExecOperationTest {
 
     private static final String BAR = "bar";
     private static final String FOO = "foo";
-
+    private static final List<String> UNIX_SLEEP_COMMAND = List.of("sleep", "5");
     @SuppressWarnings("PMD.AvoidUsingHardCodedIP")
     private static final List<String> WINDOWS_SLEEP_COMMAND =
             List.of("cmd", "/c", "ping", "-n", "12", "127.0.0.1", ">", "nul");
-    private static final List<String> UNIX_SLEEP_COMMAND = List.of("sleep", "5");
-
     @SuppressWarnings("LoggerInitializedWithForeignClass")
     private static final Logger logger = Logger.getLogger(ExecOperation.class.getName());
     private static final TestLogHandler testLogHandler = new TestLogHandler();
@@ -308,17 +304,17 @@ class ExecOperationTest {
         }
 
         @Test
-        @SuppressWarnings("DataFlowIssue")
-        void workDirNullThrows() {
-            assertThatThrownBy(() -> createBasicExecOperation().workDir((File) null))
-                    .isInstanceOf(NullPointerException.class);
-        }
-
-        @Test
         void workDirEmptyStringThrows() {
             assertThatThrownBy(() -> createBasicExecOperation().workDir(""))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("directory must not be null or empty");
+        }
+
+        @Test
+        @SuppressWarnings("DataFlowIssue")
+        void workDirNullThrows() {
+            assertThatThrownBy(() -> createBasicExecOperation().workDir((File) null))
+                    .isInstanceOf(NullPointerException.class);
         }
     }
 
@@ -632,6 +628,147 @@ class ExecOperationTest {
         @Test
         void verifyIsWindows() {
             assertSame(SystemTools.isWindows(), ExecOperation.isWindows());
+        }
+    }
+
+    @Nested
+    @DisplayName("OutputConsumer Tests")
+    class OutputConsumerTests {
+
+        @Test
+        void customOutputConsumerReceivesOutput() {
+            var lines = new ArrayList<String>();
+            var op = createBasicExecOperation()
+                    .onWindows("cmd", "/c", "echo", FOO)
+                    .onUnix("echo", FOO)
+                    .inheritIO(false)
+                    .outputConsumer(lines::add);
+
+            assertThatCode(op::execute).doesNotThrowAnyException();
+            assertThat(lines).containsExactly(FOO);
+        }
+
+        @Test
+        void customOutputConsumerWithMultipleLines() {
+            var lines = new ArrayList<String>();
+            var op = createBasicExecOperation()
+                    .onWindows("cmd", "/c", "echo", FOO, "&", "echo", BAR)
+                    .onUnix("sh", "-c", "echo " + FOO + "; echo " + BAR)
+                    .inheritIO(false)
+                    .outputConsumer(lines::add);
+
+            assertThatCode(op::execute).doesNotThrowAnyException();
+            assertThat(lines).contains(FOO, BAR);
+        }
+
+        @Test
+        void defaultOutputConsumerLogsAtInfo() {
+            var op = createBasicExecOperation()
+                    .onWindows("cmd", "/c", "echo", FOO)
+                    .onUnix("echo", FOO)
+                    .inheritIO(false);
+
+            assertThatCode(op::execute).doesNotThrowAnyException();
+            testLogHandler.printLogMessages();
+            assertThat(testLogHandler.containsMessage(FOO)).isTrue();
+        }
+
+        @Test
+        @SuppressWarnings("DataFlowIssue")
+        void outputConsumerCannotBeNull() {
+            assertThatThrownBy(() -> createBasicExecOperation().outputConsumer(null))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessage("outputConsumer must not be null");
+        }
+
+        @Test
+        void outputConsumerTracksCallCount() {
+            var count = new AtomicInteger(0);
+            var op = createBasicExecOperation()
+                    .onWindows("cmd", "/c", "echo", FOO, "&", "echo", BAR)
+                    .onUnix("sh", "-c", "echo " + FOO + "; echo " + BAR)
+                    .inheritIO(false)
+                    .outputConsumer(line -> count.incrementAndGet());
+
+            assertThatCode(op::execute).doesNotThrowAnyException();
+            assertThat(count.get()).isEqualTo(2);
+        }
+
+        @Test
+        void outputConsumerWithInheritIOTrueFails() {
+            var op = createBasicExecOperation()
+                    .onWindows("cmd", "/c", "echo", FOO)
+                    .onUnix("echo", FOO)
+                    .inheritIO(true)
+                    .outputConsumer(line -> {
+                    });
+
+            assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("Validation Tests")
+    class ValidationTests {
+
+        @Test
+        void validateFailsOnEmptyCommand() {
+            var op = new ExecOperation().fromProject(new BaseProject());
+            // args_ is empty
+
+            assertThatCode(op::execute)
+                    .isInstanceOf(ExitStatusException.class);
+            testLogHandler.printLogMessages();
+            assertThat(testLogHandler.containsExactMessage("A command must be specified.")).isTrue();
+        }
+
+        @Test
+        void validateFailsOnInheritIOWithCustomConsumer() {
+            var op = createBasicExecOperation()
+                    .command("echo", "test")
+                    .inheritIO(true)
+                    .outputConsumer(line -> {
+                    }); // custom, not DEFAULT_OUTPUT_CONSUMER
+
+            assertThatCode(op::execute)
+                    .isInstanceOf(ExitStatusException.class);
+            testLogHandler.printLogMessages();
+            assertThat(testLogHandler.containsExactMessage("Cannot use custom outputConsumer with inheritIO(true).")).isTrue();
+        }
+
+        @Test
+        void validateFailsOnInvalidWorkDir() {
+            var op = new ExecOperation()
+                    .command("echo", "test")
+                    .workDir(new File("nonexistent_dir_12345"));
+
+            assertThatCode(op::execute)
+                    .isInstanceOf(ExitStatusException.class);
+            testLogHandler.printLogMessages();
+            assertThat(testLogHandler.containsExactMessage("A valid working directory must be specified.")).isTrue();
+        }
+
+        @Test
+        void validatePassesWithInheritIOAndDefaultConsumer() {
+            var op = createBasicExecOperation()
+                    .onWindows("cmd", "/c", "echo", FOO)
+                    .onUnix("echo", FOO)
+                    .inheritIO(true);
+            // outputConsumer_ == DEFAULT_OUTPUT_CONSUMER
+
+            assertThatCode(op::execute).doesNotThrowAnyException();
+        }
+
+        @Test
+        void validatePassesWithInheritIOFalseAndCustomConsumer() {
+            var op = createBasicExecOperation()
+                    .onWindows("cmd", "/c", "echo", FOO)
+                    .onUnix("echo", FOO)
+                    .inheritIO(false)
+                    .outputConsumer(line -> {
+                    });
+
+            assertThatCode(op::execute).doesNotThrowAnyException();
         }
     }
 
