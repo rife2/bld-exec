@@ -291,16 +291,10 @@ class ExecOperationTest {
         }
 
         @Test
-        void timeoutNegativeThrows() {
-            assertThatThrownBy(() -> createBasicExecOperation().timeout(-5))
-                    .isInstanceOf(IllegalArgumentException.class);
-        }
-
-        @Test
         void timeoutZeroThrows() {
             assertThatThrownBy(() -> createBasicExecOperation().timeout(0))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("timeout must be > 0");
+                    .hasMessageContaining("timeout should not be 0");
         }
 
         @Test

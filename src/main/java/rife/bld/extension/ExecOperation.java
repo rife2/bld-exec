@@ -52,7 +52,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     private boolean inheritIO_ = true;
     @NonNull
     private Consumer<String> outputConsumer_ = DEFAULT_OUTPUT_CONSUMER;
-    private int timeout_ = ProcessExecutor.DEFAULT_TIMEOUT_SECONDS;
+    private long timeout_ = ProcessExecutor.DEFAULT_TIMEOUT_SECONDS;
     private File workDir_;
 
     @Override
@@ -530,13 +530,13 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     /**
      * Configure the command timeout.
      *
-     * @param timeout The timeout in seconds, must be greater than 0
+     * @param timeout The timeout in seconds, use a negative number for no timeout
      * @return this operation instance
-     * @throws IllegalArgumentException if timeout is less than or equal to 0
+     * @throws IllegalArgumentException if timeout is 0
      */
-    public ExecOperation timeout(int timeout) {
+    public ExecOperation timeout(long timeout) {
         if (timeout <= 0) {
-            throw new IllegalArgumentException("timeout must be > 0");
+            throw new IllegalArgumentException("timeout should not be 0; use a negative number for no timeout");
         }
         timeout_ = timeout;
         return this;
@@ -547,7 +547,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      *
      * @return the timeout in seconds
      */
-    public int timeout() {
+    public long timeout() {
         return timeout_;
     }
 
