@@ -646,7 +646,7 @@ class ExecOperationTest {
         void customOutputConsumerWithMultipleLines() {
             var lines = new ArrayList<String>();
             var op = createBasicExecOperation()
-                    .onWindows("cmd", "/c", "echo", FOO, "&", "echo", BAR)
+                    .onWindows("cmd", "/c", "echo " + FOO + "&echo " + BAR)
                     .onUnix("sh", "-c", "echo " + FOO + "; echo " + BAR)
                     .inheritIO(false)
                     .outputConsumer(lines::add);
