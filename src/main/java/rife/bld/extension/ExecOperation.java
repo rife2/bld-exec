@@ -43,7 +43,6 @@ import java.util.logging.Logger;
 @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "intentional and documented")
 public class ExecOperation extends AbstractOperation<ExecOperation> {
 
-    private static final String COMMAND_NOT_VALID = "command values must not be null or empty";
     private static final Logger logger = Logger.getLogger(ExecOperation.class.getName());
     private static final Consumer<String> DEFAULT_OUTPUT_CONSUMER = logger::info;
     private final List<String> args_ = new ArrayList<>();
@@ -55,6 +54,14 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     private long timeout_ = ProcessExecutor.DEFAULT_TIMEOUT_SECONDS;
     private File workDir_;
 
+    /**
+     * Performs the operation.
+     *
+     * @throws IllegalArgumentException if {@link #workDir() workDir} or a {@code command} are not specified,
+     *                                  or a {@link #outputConsumer(Consumer) custom output consumer} is used with
+     *                                  {@link #isInheritIO() inerhitIO(true)}
+     * @throws Exception                when an exception occurs during the execution
+     */
     @Override
     @SuppressWarnings({"PMD.PreserveStackTrace"})
     @SuppressFBWarnings("LEST_LOST_EXCEPTION_STACK_TRACE")
@@ -191,14 +198,17 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      *     <li>{@code command("./stop.sh"}</li>
      * </ul>
      *
-     * @param args one or more arguments, must not be null or contain null/empty elements
+     * @param args one or more arguments, must not be {@code null}, empty, or contain {@code null} elements
      * @return this operation instance
-     * @throws NullPointerException     if args is null
-     * @throws IllegalArgumentException if args contains null or empty elements
+     * @throws NullPointerException     if {@code args} is {@code null} or contains {@code null} elements
+     * @throws IllegalArgumentException if {@code args} is empty
      * @see #command(Collection)
      */
     public ExecOperation command(@NonNull String... args) {
-        ObjectTools.requireAllNotEmpty(args, COMMAND_NOT_VALID);
+        ObjectTools.requireNonNull(args, "command");
+        if (args.length == 0) {
+            throw new IllegalArgumentException("command must not be empty");
+        }
         args_.addAll(List.of(args));
         return this;
     }
@@ -225,14 +235,17 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     /**
      * Configures the command and arguments to be executed.
      *
-     * @param args the list of arguments, must not be null or contain null/empty elements
+     * @param args the list of arguments, must not be {@code null}, empty, or contain {@code null} elements
      * @return this operation instance
-     * @throws NullPointerException     if args is null
-     * @throws IllegalArgumentException if args contains null or empty elements
+     * @throws NullPointerException     if {@code args} is {@code null} or contains {@code null} elements
+     * @throws IllegalArgumentException if {@code args} is empty
      * @see #command(String...)
      */
     public final ExecOperation command(@NonNull Collection<String> args) {
-        ObjectTools.requireAllNotEmpty(args, COMMAND_NOT_VALID);
+        ObjectTools.requireNonNull(args, "command");
+        if (args.isEmpty()) {
+            throw new IllegalArgumentException("command must not be empty");
+        }
         args_.addAll(args);
         return this;
     }
@@ -243,15 +256,15 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * These variables are merged with the current process environment. Existing variables
      * with the same name are overridden.
      *
-     * @param name  the variable name, must not be null
-     * @param value the variable value, must not be null
+     * @param name  the variable name, must not be {@code null}
+     * @param value the variable value, must not be {@code null}
      * @return this operation instance
      * @throws NullPointerException if name or value is null
      * @see #env(Map)
      */
     public ExecOperation env(@NonNull String name, @NonNull String value) {
-        Objects.requireNonNull(name, "name must not be null");
-        Objects.requireNonNull(value, "value must not be null");
+        ObjectTools.requireNonNull(name, "env name");
+        ObjectTools.requireNonNull(value, "env value");
         env_.put(name, value);
         return this;
     }
@@ -262,13 +275,13 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * These variables are merged with the current process environment. Existing variables
      * with the same name are overridden.
      *
-     * @param vars the map of environment variables, must not be null
+     * @param vars the map of environment variables, must not be {@code null}
      * @return this operation instance
-     * @throws NullPointerException if vars is null
+     * @throws NullPointerException if {@code vars} is {@code null}
      * @see #env(String, String)
      */
     public ExecOperation env(@NonNull Map<String, String> vars) {
-        Objects.requireNonNull(vars, "vars must not be null");
+        ObjectTools.requireNonNull(vars, "env");
         env_.putAll(vars);
         return this;
     }
@@ -300,15 +313,18 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     /**
      * Configures an Exec operation from a {@link BaseProject}.
      * <p>
-     * The {@link #workDir() work directory} is automatically set to the project's working directory.
+     * The {@link #workDir() work directory} is automatically set to the project's working directory,
+     * if not already set.
      *
-     * @param project the project, must not be null
+     * @param project the project, must not be {@code null}
      * @return this operation instance
-     * @throws NullPointerException if project is null
+     * @throws NullPointerException if {@code project} is {@code null}
      */
     public ExecOperation fromProject(@NonNull BaseProject project) {
-        Objects.requireNonNull(project, "project must not be null");
-        workDir_ = project.workDirectory();
+        ObjectTools.requireNonNull(project, "project");
+        if (workDir_ == null) {
+            workDir_ = project.workDirectory();
+        }
         return this;
     }
 
@@ -353,118 +369,144 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
 
     /**
      * If the current OS is Linux, configures the command and arguments to be executed.
+     * <p>
      * If not Linux, this call is ignored.
      *
-     * @param args the command to use on Linux, must not be null or contain null/empty elements
+     * @param args the command to use on Linux, must not be {@code null}, empty, or contain {@code null} elements
      * @return this operation instance
-     * @throws NullPointerException     if args is null
-     * @throws IllegalArgumentException if args contains null or empty elements
+     * @throws NullPointerException     if {@code args} is {@code null} or contains {@code null} elements
+     * @throws IllegalArgumentException if {@code args} is empty
      * @see #onLinux(Collection)
      * @see #isLinux() static method for complex conditional logic
      */
     public ExecOperation onLinux(@NonNull String... args) {
-        ObjectTools.requireAllNotEmpty(args, COMMAND_NOT_VALID);
+        ObjectTools.requireNonNull(args, "onLinux");
+        if (args.length == 0) {
+            throw new IllegalArgumentException("onLinux command must not be empty");
+        }
         if (SystemTools.isLinux()) {
-            return command(args);
+            args_.addAll(List.of(args));
         }
         return this;
     }
 
     /**
      * If the current OS is Linux, configures the command and arguments to be executed.
+     * <p>
      * If not Linux, this call is ignored.
      *
-     * @param args the command to use on Linux, must not be null or contain null/empty elements
+     * @param args the command to use on Linux, must not be {@code null}, empty, or contain {@code null} elements
      * @return this operation instance
-     * @throws NullPointerException     if args is null
-     * @throws IllegalArgumentException if args contains null or empty elements
+     * @throws NullPointerException     if {@code args} is {@code null} or contains {@code null} elements
+     * @throws IllegalArgumentException if {@code args} is empty
      * @see #onLinux(String...)
      */
     public ExecOperation onLinux(@NonNull Collection<String> args) {
-        ObjectTools.requireAllNotEmpty(args, COMMAND_NOT_VALID);
+        ObjectTools.requireNonNull(args, "onLinux");
+        if (args.isEmpty()) {
+            throw new IllegalArgumentException("onLinux command must not be empty");
+        }
         if (SystemTools.isLinux()) {
-            return command(args);
+            args_.addAll(args);
         }
         return this;
     }
 
     /**
      * If the current OS is macOS, configures the command and arguments to be executed.
+     * <p>
      * If not macOS, this call is ignored.
      *
-     * @param args the command to use on macOS, must not be null or contain null/empty elements
+     * @param args the command to use on macOS, must not be {@code null}, empty, or contain {@code null} elements
      * @return this operation instance
-     * @throws NullPointerException     if args is null
-     * @throws IllegalArgumentException if args contains null or empty elements
+     * @throws NullPointerException     if {@code args} is {@code null} or contains {@code null} elements
+     * @throws IllegalArgumentException if {@code args} is empty
      * @see #onMacOS(Collection)
      * @see #isMacOS() static method for complex conditional logic
      */
     public ExecOperation onMacOS(@NonNull String... args) {
-        ObjectTools.requireAllNotEmpty(args, COMMAND_NOT_VALID);
+        ObjectTools.requireNonNull(args, "onMacOS");
+        if (args.length == 0) {
+            throw new IllegalArgumentException("onMacOS command must not be empty");
+        }
         if (SystemTools.isMacOS()) {
-            return command(args);
+            args_.addAll(List.of(args));
         }
         return this;
     }
 
     /**
      * If the current OS is macOS, configures the command and arguments to be executed.
+     * <p>
      * If not macOS, this call is ignored.
      *
-     * @param args the command to use on macOS, must not be null or contain null/empty elements
+     * @param args the command to use on macOS, must not be {@code null}, empty, or contain {@code null} elements
      * @return this operation instance
-     * @throws NullPointerException     if args is null
-     * @throws IllegalArgumentException if args contains null or empty elements
+     * @throws NullPointerException     if {@code args} is {@code null} or contains {@code null} elements
+     * @throws IllegalArgumentException if {@code args} is empty
      * @see #onMacOS(String...)
      */
     public ExecOperation onMacOS(@NonNull Collection<String> args) {
-        ObjectTools.requireAllNotEmpty(args, COMMAND_NOT_VALID);
+        ObjectTools.requireNonNull(args, "onMacOS");
+        if (args.isEmpty()) {
+            throw new IllegalArgumentException("onMacOS command must not be empty");
+        }
         if (SystemTools.isMacOS()) {
-            return command(args);
+            args_.addAll(args);
         }
         return this;
     }
 
     /**
      * If the current OS is Unix-like (Linux, macOS, FreeBSD, Solaris, AIX), configures
-     * the command and arguments to be executed. If Windows, this call is ignored.
+     * the command and arguments to be executed.
+     * <p>
+     * If Windows, this call is ignored.
      * <p>
      * This is a convenience method for commands that work on all Unix-like systems.
      *
-     * @param args the command to use on Unix-like systems, must not be null or contain null/empty elements
+     * @param args the command to use on Unix-like systems, must not be {@code null}, empty, or contain null elements
      * @return this operation instance
-     * @throws NullPointerException     if args is null
-     * @throws IllegalArgumentException if args contains null or empty elements
+     * @throws NullPointerException     if {@code args} is {@code null} or contains {@code null} elements
+     * @throws IllegalArgumentException if {@code args} is empty
      * @see #onUnix(Collection)
      */
     public ExecOperation onUnix(@NonNull String... args) {
-        ObjectTools.requireAllNotEmpty(args, COMMAND_NOT_VALID);
+        ObjectTools.requireNonNull(args, "onUnix");
+        if (args.length == 0) {
+            throw new IllegalArgumentException("onUnix command must not be empty");
+        }
         if (!SystemTools.isWindows()) {
-            return command(args);
+            args_.addAll(List.of(args));
         }
         return this;
     }
 
     /**
      * If the current OS is Unix-like, configures the command and arguments to be executed.
+     * <p>
      * If Windows, this call is ignored.
      *
-     * @param args the command to use on Unix-like systems, must not be null or contain null/empty elements
+     * @param args the command to use on Unix-like systems, must not be {@code null}, empty, or contain null elements
      * @return this operation instance
-     * @throws NullPointerException     if args is null
-     * @throws IllegalArgumentException if args contains null or empty elements
+     * @throws NullPointerException     if {@code args} is {@code null} or contains {@code null} elements
+     * @throws IllegalArgumentException if {@code args} is empty
      * @see #onUnix(String...)
      */
     public ExecOperation onUnix(@NonNull Collection<String> args) {
-        ObjectTools.requireAllNotEmpty(args, COMMAND_NOT_VALID);
+        ObjectTools.requireNonNull(args, "onUnix");
+        if (args.isEmpty()) {
+            throw new IllegalArgumentException("onUnix command must not be empty");
+        }
         if (!SystemTools.isWindows()) {
-            return command(args);
+            args_.addAll(args);
         }
         return this;
     }
 
     /**
      * If the current OS is Windows, configures the command and arguments to be executed.
+     * <p>
      * If not Windows, this call is ignored.
      * <p>
      * Allows platform-specific commands to be declared fluently:
@@ -478,36 +520,43 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * <p>
      * Note: If multiple matching calls are made, the last one wins.
      *
-     * @param args the command to use on Windows, must not be null or contain null/empty elements
+     * @param args the command to use on Windows, must not be {@code null}, empty, or contain null elements
      * @return this operation instance
-     * @throws NullPointerException     if args is null
-     * @throws IllegalArgumentException if args contains null or empty elements
+     * @throws NullPointerException     if {@code args} is {@code null} or contains {@code null} elements
+     * @throws IllegalArgumentException if {@code args} is empty
      * @see #onWindows(Collection)
      * @see #onUnix(String...)
      * @see #isWindows() static method for complex conditional logic
      */
     public ExecOperation onWindows(@NonNull String... args) {
-        ObjectTools.requireAllNotEmpty(args, COMMAND_NOT_VALID);
+        ObjectTools.requireNonNull(args, "onWindows");
+        if (args.length == 0) {
+            throw new IllegalArgumentException("onWindows command must not be empty");
+        }
         if (SystemTools.isWindows()) {
-            return command(args);
+            args_.addAll(List.of(args));
         }
         return this;
     }
 
     /**
      * If the current OS is Windows, configures the command and arguments to be executed.
+     * <p>
      * If not Windows, this call is ignored.
      *
-     * @param args the command to use on Windows, must not be null or contain null/empty elements
+     * @param args the command to use on Windows, must not be {@code null}, empty, or contain {@code null} elements
      * @return this operation instance
-     * @throws NullPointerException     if args is null
-     * @throws IllegalArgumentException if args contains null or empty elements
+     * @throws NullPointerException     if {@code args} is {@code null} or contains {@code null} elements
+     * @throws IllegalArgumentException if {@code args} is empty
      * @see #onWindows(String...)
      */
     public ExecOperation onWindows(@NonNull Collection<String> args) {
-        ObjectTools.requireAllNotEmpty(args, COMMAND_NOT_VALID);
+        ObjectTools.requireNonNull(args, "onWindows");
+        if (args.isEmpty()) {
+            throw new IllegalArgumentException("onWindows command must not be empty");
+        }
         if (SystemTools.isWindows()) {
-            return command(args);
+            args_.addAll(args);
         }
         return this;
     }
@@ -515,15 +564,16 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     /**
      * Sets a consumer to receive output lines when not inheriting I/O.
      * <p>
-     * Only called when {@link #isInheritIO()} is {@code false}. Default logs at INFO level.
+     * Only called when {@link #isInheritIO()} is {@code false}
+     * <p>
+     * Default logs with {@link Level#INFO}
      *
-     * @param outputConsumer the output consumer, must not be null
+     * @param outputConsumer the output consumer, must not be {@code null}
      * @return this operation instance
-     * @throws NullPointerException if outputConsumer is null
+     * @throws NullPointerException if {@code outputConsumer} is {@code null}
      */
     public ExecOperation outputConsumer(@NonNull Consumer<String> outputConsumer) {
-        Objects.requireNonNull(outputConsumer, "outputConsumer must not be null");
-        outputConsumer_ = outputConsumer;
+        outputConsumer_ = ObjectTools.requireNonNull(outputConsumer, "outputConsumer");
         return this;
     }
 
@@ -535,7 +585,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @throws IllegalArgumentException if timeout is 0
      */
     public ExecOperation timeout(long timeout) {
-        if (timeout <= 0) {
+        if (timeout == 0) {
             throw new IllegalArgumentException("timeout should not be 0; use a negative number for no timeout");
         }
         timeout_ = timeout;
@@ -554,38 +604,37 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
     /**
      * Configures the working directory.
      *
-     * @param dir the directory, must not be null
+     * @param dir the directory, must not be {@code null}
      * @return this operation instance
-     * @throws NullPointerException if dir is null
+     * @throws NullPointerException if {@code dir} is {@code null}
      */
     public ExecOperation workDir(@NonNull File dir) {
-        Objects.requireNonNull(dir, "directory must not be null");
-        workDir_ = dir;
+        workDir_ = ObjectTools.requireNonNull(dir, "workDir");
         return this;
     }
 
     /**
      * Configures the working directory.
      *
-     * @param dir the directory, must not be null
+     * @param dir the directory, must not be {@code null}
      * @return this operation instance
-     * @throws NullPointerException if dir is null
+     * @throws NullPointerException if {@code dir} is {@code null}
      */
     public ExecOperation workDir(@NonNull Path dir) {
-        Objects.requireNonNull(dir, "directory must not be null");
+        ObjectTools.requireNonNull(dir, "workDir");
         return workDir(dir.toFile());
     }
 
     /**
      * Configures the working directory.
      *
-     * @param dir the directory path, must not be null or empty
+     * @param dir the directory path, must not be {@code null} or empty
      * @return this operation instance
-     * @throws IllegalArgumentException if dir is null or empty
+     * @throws IllegalArgumentException if {@code dir} is {@code null} or empty
      */
     @SuppressFBWarnings("PATH_TRAVERSAL_IN")
     public ExecOperation workDir(@NonNull String dir) {
-        ObjectTools.requireNotEmpty(dir, "directory must not be null or empty");
+        ObjectTools.requireNotEmpty(dir, "workDir");
         return workDir(new File(dir));
     }
 
@@ -618,26 +667,15 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
         }
     }
 
-    private void validatePreconditions() throws ExitStatusException {
-        final var logSevere = logger.isLoggable(Level.SEVERE) && !silent();
-
+    private void validatePreconditions() {
         if (!IOTools.isDirectory(workDir_)) {
-            if (logSevere) {
-                logger.severe("A valid working directory must be specified.");
-            }
-            throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
+            throw new IllegalArgumentException("A valid working directory must be specified.");
         }
         if (ObjectTools.isEmpty(args_)) {
-            if (logSevere) {
-                logger.severe("A command must be specified.");
-            }
-            throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
+            throw new IllegalArgumentException("A command must be specified.");
         }
         if (inheritIO_ && outputConsumer_ != DEFAULT_OUTPUT_CONSUMER) {
-            if (logSevere) {
-                logger.severe("Cannot use custom outputConsumer with inheritIO(true).");
-            }
-            throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
+            throw new IllegalArgumentException("Cannot use custom outputConsumer with inheritIO(true).");
         }
     }
 }

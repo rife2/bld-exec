@@ -23,6 +23,9 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import rife.bld.BaseProject;
 import rife.bld.Project;
 import rife.bld.WebProject;
@@ -32,6 +35,7 @@ import rife.bld.extension.tools.SystemTools;
 import rife.bld.operations.exceptions.ExitStatusException;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -125,34 +129,13 @@ class ExecOperationTest {
         }
 
         @Test
-        void executeWithoutProject() {
+        void executeWithoutWorkDir() {
             var op = new ExecOperation()
                     .onWindows("cmd", "/c", "echo", FOO)
                     .onUnix("echo", FOO);
 
-            assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
-        }
-
-        @Test
-        void executeWithoutProjectNoLogging() {
-            logger.setLevel(Level.OFF);
-            var op = new ExecOperation()
-                    .onWindows("cmd", "/c", "echo", FOO)
-                    .onUnix("echo", FOO);
-
-            assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
-            assertThat(testLogHandler.isEmpty()).isTrue();
-        }
-
-        @Test
-        void executeWithoutProjectWithSilent() {
-            var op = new ExecOperation()
-                    .onWindows("cmd", "/c", "echo", FOO)
-                    .onUnix("echo", FOO)
-                    .silent(true);
-
-            assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
-            assertThat(testLogHandler.isEmpty()).isTrue();
+            assertThatCode(op::execute).isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("working directory");
         }
 
         @Test
@@ -198,8 +181,8 @@ class ExecOperationTest {
         @Test
         void commandNullElementThrows() {
             assertThatThrownBy(() -> createBasicExecOperation().command("echo", null))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("command values must not be null or empty");
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("command");
         }
 
         @Test
@@ -301,7 +284,7 @@ class ExecOperationTest {
         void workDirEmptyStringThrows() {
             assertThatThrownBy(() -> createBasicExecOperation().workDir(""))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("directory must not be null or empty");
+                    .hasMessageContaining("workDir");
         }
 
         @Test
@@ -444,15 +427,8 @@ class ExecOperationTest {
         @Test
         void onLinuxCollectionWithNullThrows() {
             assertThatCode(() -> createBasicExecOperation().onLinux(Arrays.asList("ls", null)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("command values must not be null or empty");
-        }
-
-        @Test
-        void onLinuxEmptyElementThrows() {
-            assertThatCode(() -> createBasicExecOperation().onLinux("ls", ""))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("command values must not be null or empty");
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("onLinux");
         }
 
         @Test
@@ -467,14 +443,14 @@ class ExecOperationTest {
         @SuppressWarnings("DataFlowIssue")
         void onLinuxNullArgsThrows() {
             assertThatCode(() -> createBasicExecOperation().onLinux((String[]) null))
-                    .isInstanceOf(IllegalArgumentException.class);
+                    .isInstanceOf(NullPointerException.class);
         }
 
         @Test
         @SuppressWarnings("DataFlowIssue")
         void onLinuxNullCollectionThrows() {
             assertThatCode(() -> createBasicExecOperation().onLinux((Collection<String>) null))
-                    .isInstanceOf(IllegalArgumentException.class);
+                    .isInstanceOf(NullPointerException.class);
         }
 
         @Test
@@ -697,13 +673,142 @@ class ExecOperationTest {
                     .outputConsumer(line -> {
                     });
 
-            assertThatCode(op::execute).isInstanceOf(ExitStatusException.class);
+            assertThatCode(op::execute).isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("outputConsumer");
         }
     }
 
     @Nested
     @DisplayName("Validation Tests")
+    @SuppressWarnings("DataFlowIssue")
     class ValidationTests {
+
+        @ParameterizedTest
+        @NullSource
+        void commandWithNull(String arg) {
+            assertThatThrownBy(() -> new ExecOperation().command(arg))
+                    .as("varargs with null element").isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().command("foo", arg))
+                    .as("array has null element").isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().command(List.of("foo", arg)))
+                    .as("list has null element").isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().command((String[]) null))
+                    .as("array is null").isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().command((Collection<String>) null))
+                    .as("collection is null").isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        void envWithNull() {
+            assertThatThrownBy(() -> new ExecOperation().env(null, "val"))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().env("name", null))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().env(null))
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        void executeWithInheritIOAndCustomConsumer() {
+            var op = new ExecOperation()
+                    .workDir(new File("."))
+                    .command("echo")
+                    .inheritIO(true)
+                    .outputConsumer(s -> {
+                    });
+            assertThatThrownBy(op::execute)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("outputConsumer");
+        }
+
+        @Test
+        void executeWithoutCommand() {
+            var op = new ExecOperation().workDir(new File("."));
+            assertThatThrownBy(op::execute)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("command");
+        }
+
+        @Test
+        void executeWithoutWorkDir() {
+            var op = new ExecOperation().command("echo", "hi");
+            assertThatThrownBy(op::execute)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("working directory");
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void onLinuxWithNull(String arg) {
+            assertThatThrownBy(() -> new ExecOperation().onLinux(arg))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onLinux("foo", arg))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onLinux(List.of("foo", arg)))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onLinux((String[]) null))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onLinux((Collection<String>) null))
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void onMacOSWithNull(String arg) {
+            assertThatThrownBy(() -> new ExecOperation().onMacOS(arg))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onMacOS("foo", arg))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onMacOS(List.of("foo", arg)))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onMacOS((String[]) null))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onMacOS((Collection<String>) null))
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void onUnixWithNull(String arg) {
+            assertThatThrownBy(() -> new ExecOperation().onUnix(arg))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onUnix("foo", arg))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onUnix(List.of("foo", arg)))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onUnix((String[]) null))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onUnix((Collection<String>) null))
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void onWindowsWithNull(String arg) {
+            assertThatThrownBy(() -> new ExecOperation().onWindows(arg))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onWindows("foo", arg))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onWindows(List.of("foo", arg)))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onWindows((String[]) null))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().onWindows((Collection<String>) null))
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        void outputConsumerWithNull() {
+            assertThatThrownBy(() -> new ExecOperation().outputConsumer(null))
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        void timeoutWithZero() {
+            assertThatThrownBy(() -> new ExecOperation().timeout(0))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("timeout");
+        }
 
         @Test
         void validateFailsOnEmptyCommand() {
@@ -711,9 +816,17 @@ class ExecOperationTest {
             // args_ is empty
 
             assertThatCode(op::execute)
-                    .isInstanceOf(ExitStatusException.class);
-            testLogHandler.printLogMessages();
-            assertThat(testLogHandler.containsExactMessage("A command must be specified.")).isTrue();
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("command");
+        }
+
+        @Test
+        void validateFailsOnEmptyCommandFromBuilder() {
+            var op = new ExecOperation().fromProject(new BaseProject());
+
+            // This should fail immediately, not just at execute()
+            assertThatThrownBy(() -> op.command(List.of()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("command must not be empty");
         }
 
         @Test
@@ -725,9 +838,7 @@ class ExecOperationTest {
                     }); // custom, not DEFAULT_OUTPUT_CONSUMER
 
             assertThatCode(op::execute)
-                    .isInstanceOf(ExitStatusException.class);
-            testLogHandler.printLogMessages();
-            assertThat(testLogHandler.containsExactMessage("Cannot use custom outputConsumer with inheritIO(true).")).isTrue();
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("outputConsumer");
         }
 
         @Test
@@ -737,9 +848,7 @@ class ExecOperationTest {
                     .workDir(new File("nonexistent_dir_12345"));
 
             assertThatCode(op::execute)
-                    .isInstanceOf(ExitStatusException.class);
-            testLogHandler.printLogMessages();
-            assertThat(testLogHandler.containsExactMessage("A valid working directory must be specified.")).isTrue();
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("working directory");
         }
 
         @Test
@@ -764,6 +873,21 @@ class ExecOperationTest {
 
             assertThatCode(op::execute).doesNotThrowAnyException();
         }
+
+        @ParameterizedTest
+        @EmptySource
+        void workDirWithEmpty(String arg) {
+            assertThatThrownBy(() -> new ExecOperation().workDir(arg))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        void workDirWithNull() {
+            assertThatThrownBy(() -> new ExecOperation().workDir((File) null))
+                    .isInstanceOf(NullPointerException.class);
+            assertThatThrownBy(() -> new ExecOperation().workDir((Path) null))
+                    .isInstanceOf(NullPointerException.class);
+        }
     }
 
     @Nested
@@ -783,7 +907,7 @@ class ExecOperationTest {
                             .onUnix("echo", FOO)
                             .workDir(FOO)
                             .execute())
-                    .isInstanceOf(ExitStatusException.class);
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("working directory");
         }
 
         @Test
@@ -795,9 +919,7 @@ class ExecOperationTest {
                             .onUnix("echo", FOO)
                             .workDir(FOO)
                             .execute())
-                    .isInstanceOf(ExitStatusException.class);
-
-            assertThat(testLogHandler.isEmpty()).isTrue();
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("working directory");
         }
 
         @Test
@@ -809,7 +931,7 @@ class ExecOperationTest {
                             .workDir(FOO)
                             .silent(true)
                             .execute())
-                    .isInstanceOf(ExitStatusException.class);
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("working directory");
 
             assertThat(testLogHandler.isEmpty()).isTrue();
         }
