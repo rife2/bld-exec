@@ -29,8 +29,8 @@ import org.junit.jupiter.params.provider.NullSource;
 import rife.bld.BaseProject;
 import rife.bld.Project;
 import rife.bld.WebProject;
-import rife.bld.extension.testing.LoggingExtension;
-import rife.bld.extension.testing.TestLogHandler;
+import rife.bld.testing.LoggingExtension;
+import rife.bld.testing.TestLogHandler;
 import rife.bld.extension.tools.SystemTools;
 import rife.bld.operations.exceptions.ExitStatusException;
 
@@ -134,8 +134,8 @@ class ExecOperationTest {
                     .onWindows("cmd", "/c", "echo", FOO)
                     .onUnix("echo", FOO);
 
-            assertThatCode(op::execute).isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("working directory");
+            assertThatCode(op::execute).isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("workDir");
         }
 
         @Test
@@ -179,6 +179,7 @@ class ExecOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void commandNullElementThrows() {
             assertThatThrownBy(() -> createBasicExecOperation().command("echo", null))
                     .isInstanceOf(NullPointerException.class)
@@ -425,6 +426,7 @@ class ExecOperationTest {
         }
 
         @Test
+        @SuppressWarnings("NullableProblems")
         void onLinuxCollectionWithNullThrows() {
             assertThatCode(() -> createBasicExecOperation().onLinux(Arrays.asList("ls", null)))
                     .isInstanceOf(NullPointerException.class)
@@ -733,8 +735,8 @@ class ExecOperationTest {
         void executeWithoutWorkDir() {
             var op = new ExecOperation().command("echo", "hi");
             assertThatThrownBy(op::execute)
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("working directory");
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("workDir");
         }
 
         @ParameterizedTest
