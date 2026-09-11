@@ -42,6 +42,7 @@ import java.util.logging.Logger;
 @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "intentional and documented")
 public class ExecOperation extends AbstractOperation<ExecOperation> {
 
+    private static final String WORK_DIR = "workDir";
     private static final Logger logger = Logger.getLogger(ExecOperation.class.getName());
     private static final Consumer<String> DEFAULT_OUTPUT_CONSUMER = logger::info;
     private final List<String> args_ = new ArrayList<>();
@@ -61,10 +62,10 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @throws Exception                when an exception occurs during the execution
      */
     @Override
-    @SuppressWarnings({"PMD.PreserveStackTrace"})
+    @SuppressWarnings({"PMD.PreserveStackTrace", "PMD.DoNotUseThreads"})
     @SuppressFBWarnings("LEST_LOST_EXCEPTION_STACK_TRACE")
     public void execute() throws Exception {
-        var workDir = ObjectTools.requireNonNull(workDir_, "workDir");
+        var workDir = ObjectTools.requireNonNull(workDir_, WORK_DIR);
 
         validatePreconditions();
 
@@ -593,7 +594,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @throws NullPointerException if {@code dir} is {@code null}
      */
     public ExecOperation workDir(File dir) {
-        workDir_ = ObjectTools.requireNonNull(dir, "workDir");
+        workDir_ = ObjectTools.requireNonNull(dir, WORK_DIR);
         return this;
     }
 
@@ -605,7 +606,7 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @throws NullPointerException if {@code dir} is {@code null}
      */
     public ExecOperation workDir(Path dir) {
-        ObjectTools.requireNonNull(dir, "workDir");
+        ObjectTools.requireNonNull(dir, WORK_DIR);
         return workDir(dir.toFile());
     }
 
@@ -617,9 +618,8 @@ public class ExecOperation extends AbstractOperation<ExecOperation> {
      * @throws IllegalArgumentException if {@code dir} is blank
      * @throws NullPointerException     is {@code dir} is {@code null}
      */
-    @SuppressFBWarnings("PATH_TRAVERSAL_IN")
     public ExecOperation workDir(String dir) {
-        TextTools.requireNotBlank(dir, "workDir");
+        TextTools.requireNotBlank(dir, WORK_DIR);
         return workDir(new File(dir));
     }
 

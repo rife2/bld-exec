@@ -29,10 +29,10 @@ import org.junit.jupiter.params.provider.NullSource;
 import rife.bld.BaseProject;
 import rife.bld.Project;
 import rife.bld.WebProject;
-import rife.bld.testing.LoggingExtension;
-import rife.bld.testing.TestLogHandler;
 import rife.bld.extension.tools.SystemTools;
 import rife.bld.operations.exceptions.ExitStatusException;
+import rife.bld.testing.LoggingExtension;
+import rife.bld.testing.TestLogHandler;
 
 import java.io.File;
 import java.nio.file.Path;
