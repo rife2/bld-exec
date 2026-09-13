@@ -34,7 +34,7 @@ public class ExecOperationBuild extends Project {
     public ExecOperationBuild() {
         pkg = "rife.bld.extension";
         name = "bld-exec";
-        version = version(1, 4, 0);
+        version = version(1, 4, 1, "SNAPSHOT");
 
         javaRelease = 17;
 
@@ -47,7 +47,7 @@ public class ExecOperationBuild extends Project {
         scope(compile)
                 .include(dependency("com.uwyn.rife2", "bld-extensions-tools",
                         version(1, 3, 0)))
-                .include(dependency("com.uwyn.rife2", "bld", version(3, 0, 0)));
+                .include(dependency("com.uwyn.rife2", "bld", version(3, 0, 1)));
         scope(provided)
                 .include(dependency("org.jspecify", "jspecify", "1.0.1"))
                 .include(dependency("com.github.spotbugs", "spotbugs-annotations",
